@@ -39,7 +39,7 @@ class LunAvaritiaApp extends StatelessWidget {
   }
 
   ThemeData _buildTheme(Brightness brightness) {
-    final seed = const Color(0xFF7C5CBF); // Natsume purple
+    const seed = Color(0xFF7C5CBF); // Natsume purple
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,

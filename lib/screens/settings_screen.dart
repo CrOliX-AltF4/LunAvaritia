@@ -140,10 +140,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 8),
           Text('À propos', style: Theme.of(context).textTheme.labelLarge),
           const SizedBox(height: 8),
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: const Text("Lun'Avaritia"),
-            subtitle: const Text('v1.1.0 — companion mobile Natsume / LunAcedia'),
+          const ListTile(
+            leading: Icon(Icons.info_outline),
+            title: Text("Lun'Avaritia"),
+            subtitle: Text('v1.1.0 — companion mobile Natsume / LunAcedia'),
             contentPadding: EdgeInsets.zero,
           ),
         ],

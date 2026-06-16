@@ -1,0 +1,33 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+*.lock
+doc/api/
+
+# Android
+android/local.properties
+android/.gradle/
+android/captures/
+android/gradlew
+android/gradlew.bat
+android/gradle/
+android/app/debug/
+android/app/profile/
+android/app/release/
+android/app/google-services.json
+
+# IntelliJ / AS
+*.iml
+.idea/
+*.ipr
+*.iws
+.DS_Store
+
+# Env
+.env
+*.env.local

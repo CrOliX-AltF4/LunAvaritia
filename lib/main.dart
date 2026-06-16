@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'app.dart';
 import 'config/api_config.dart';
 import 'services/api_service.dart';
+import 'services/lunacedia_client.dart';
+import 'services/backend_client.dart';
 import 'services/push_service.dart';
 
 void main() async {
@@ -11,11 +13,14 @@ void main() async {
   await Firebase.initializeApp();
 
   final config = await ApiConfig.load();
-  final api    = ApiService(config);
+
+  final BackendClient client = config.backendMode == 'lunacedia'
+      ? LunAcediaClient(config)
+      : ApiService(config);
 
   // FCM push — non-fatal if Firebase is not configured
   try {
-    await PushService(api).init();
+    await PushService(client).init();
   } catch (_) {}
 
   runApp(LunAvaritiaApp(config: config));

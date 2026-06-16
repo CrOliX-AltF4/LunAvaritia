@@ -1,12 +1,12 @@
 import 'package:flutter/foundation.dart';
 import '../models/chat_message.dart';
 import '../models/natsume_status.dart';
-import '../services/api_service.dart';
+import '../services/backend_client.dart';
 
 class ChatProvider extends ChangeNotifier {
   ChatProvider(this._api);
 
-  final ApiService _api;
+  final BackendClient _api;
 
   final List<ChatMessage> messages = [];
   NatsumeStatus status = NatsumeStatus.empty;

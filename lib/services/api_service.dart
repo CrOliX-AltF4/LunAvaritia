@@ -65,8 +65,8 @@ class ApiService extends BackendClient {
   }
 
   @override
-  Future<void> markRead(String alertId) async {
-    await _post('/api/mobile/alerts/$alertId/read', {});
+  Future<void> markRead(String id) async {
+    await _post('/api/mobile/alerts/$id/read', {});
   }
 
   @override

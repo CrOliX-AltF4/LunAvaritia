@@ -1,0 +1,76 @@
+name: Build APK
+
+on:
+    push:
+        tags:
+            - "v*"
+
+permissions:
+    contents: write
+
+jobs:
+    apk:
+        name: Build & upload debug APK
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup Java
+              uses: actions/setup-java@v4
+              with:
+                  distribution: temurin
+                  java-version: "17"
+
+            - name: Setup Flutter
+              uses: subosito/flutter-action@v2
+              with:
+                  flutter-version: "3.24.0"
+                  channel: stable
+                  cache: true
+
+            - name: Create android/local.properties
+              run: |
+                  echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
+                  echo "flutter.sdk=$FLUTTER_ROOT" >> android/local.properties
+
+            - name: Inject google-services.json
+              env:
+                  GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+              # Falls back to dummy config if secret is not set (FCM inactive at runtime)
+              run: |
+                  if [ -n "$GOOGLE_SERVICES_JSON_B64" ]; then
+                    echo "$GOOGLE_SERVICES_JSON_B64" | base64 -d > android/app/google-services.json
+                  else
+                    cat > android/app/google-services.json << 'EOF'
+                  {
+                    "project_info": {
+                      "project_number": "000000000000",
+                      "project_id": "lunavaritia-ci",
+                      "storage_bucket": "lunavaritia-ci.appspot.com"
+                    },
+                    "client": [
+                      {
+                        "client_info": {
+                          "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+                          "android_client_info": { "package_name": "com.crolix.lunavaritia" }
+                        },
+                        "oauth_client": [],
+                        "api_key": [{ "current_key": "ci-placeholder-key" }],
+                        "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+                      }
+                    ],
+                    "configuration_version": "1"
+                  }
+                  EOF
+                  fi
+
+            - name: Install dependencies
+              run: flutter pub get
+
+            - name: Build APK (debug)
+              run: flutter build apk --debug
+
+            - name: Upload APK to release
+              uses: softprops/action-gh-release@v2
+              with:
+                  files: build/app/outputs/flutter-apk/app-debug.apk

@@ -1,0 +1,73 @@
+name: CI
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    ci:
+        name: Analyze & Build
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup Java
+              uses: actions/setup-java@v4
+              with:
+                  distribution: temurin
+                  java-version: "17"
+
+            - name: Setup Flutter
+              uses: subosito/flutter-action@v2
+              with:
+                  flutter-version: "3.24.0"
+                  channel: stable
+                  cache: true
+
+            - name: Create android/local.properties
+              run: |
+                  echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
+                  echo "flutter.sdk=$FLUTTER_ROOT" >> android/local.properties
+
+            - name: Create CI google-services.json
+              # Real file is gitignored — dummy satisfies the Gradle plugin at build time
+              run: |
+                  cat > android/app/google-services.json << 'EOF'
+                  {
+                    "project_info": {
+                      "project_number": "000000000000",
+                      "project_id": "lunavaritia-ci",
+                      "storage_bucket": "lunavaritia-ci.appspot.com"
+                    },
+                    "client": [
+                      {
+                        "client_info": {
+                          "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+                          "android_client_info": {
+                            "package_name": "com.crolix.lunavaritia"
+                          }
+                        },
+                        "oauth_client": [],
+                        "api_key": [{ "current_key": "ci-placeholder-key" }],
+                        "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+                      }
+                    ],
+                    "configuration_version": "1"
+                  }
+                  EOF
+
+            - name: Install dependencies
+              run: flutter pub get
+
+            - name: Analyze
+              run: flutter analyze
+
+            - name: Build APK (debug)
+              run: flutter build apk --debug

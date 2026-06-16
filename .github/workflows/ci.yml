@@ -69,5 +69,8 @@ jobs:
             - name: Analyze
               run: flutter analyze
 
+            - name: Debug — print manifest
+              run: cat android/app/src/main/AndroidManifest.xml
+
             - name: Build APK (debug)
-              run: flutter build apk --debug
+              run: flutter build apk --debug --verbose

@@ -1,6 +1,6 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'api_service.dart';
+import 'backend_client.dart';
 
 // Top-level handler required by Firebase for background messages
 @pragma('vm:entry-point')
@@ -11,7 +11,7 @@ Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
 class PushService {
   PushService(this._api);
 
-  final ApiService _api;
+  final BackendClient _api;
 
   final _localNotifications = FlutterLocalNotificationsPlugin();
 

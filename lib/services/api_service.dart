@@ -4,16 +4,11 @@ import '../config/api_config.dart';
 import '../models/alert.dart';
 import '../models/chat_message.dart';
 import '../models/natsume_status.dart';
+import 'backend_client.dart';
 
-class ApiException implements Exception {
-  ApiException(this.statusCode, this.message);
-  final int statusCode;
-  final String message;
-  @override
-  String toString() => 'ApiException($statusCode): $message';
-}
+export 'backend_client.dart' show ApiException;
 
-class ApiService {
+class ApiService extends BackendClient {
   ApiService(this._config);
 
   final ApiConfig _config;
@@ -43,11 +38,13 @@ class ApiService {
 
   // ── Chat ──────────────────────────────────────────────────────────────────
 
+  @override
   Future<ChatMessage> sendChat(String text) async {
     final data = await _post('/api/mobile/chat', {'text': text});
     return ChatMessage.fromJson({'role': 'natsume', ...data});
   }
 
+  @override
   Future<NatsumeStatus> getStatus() async {
     final data = await _get('/api/mobile/status');
     return NatsumeStatus.fromJson(data);
@@ -55,6 +52,7 @@ class ApiService {
 
   // ── Alerts ────────────────────────────────────────────────────────────────
 
+  @override
   Future<List<Alert>> getAlerts({int limit = 50, int offset = 0, bool? unread}) async {
     final q = StringBuffer('/api/mobile/alerts?limit=$limit&offset=$offset');
     if (unread == true) q.write('&unread=true');
@@ -66,16 +64,19 @@ class ApiService {
         .toList();
   }
 
+  @override
   Future<void> markRead(String alertId) async {
     await _post('/api/mobile/alerts/$alertId/read', {});
   }
 
+  @override
   Future<void> markAllRead() async {
     await _post('/api/mobile/alerts/read-all', {});
   }
 
   // ── Push token ────────────────────────────────────────────────────────────
 
+  @override
   Future<void> registerPushToken(String token) async {
     await _post('/api/mobile/push-token', {'token': token});
   }

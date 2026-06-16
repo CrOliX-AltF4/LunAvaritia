@@ -1,13 +1,13 @@
 import 'package:flutter/foundation.dart';
 import '../models/alert.dart';
-import '../services/api_service.dart';
+import '../services/backend_client.dart';
 
 enum AlertFilter { all, urgent, email, calendar, tasks }
 
 class AlertProvider extends ChangeNotifier {
   AlertProvider(this._api);
 
-  final ApiService _api;
+  final BackendClient _api;
 
   List<Alert> _alerts = [];
   AlertFilter filter = AlertFilter.all;

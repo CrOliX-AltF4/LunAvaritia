@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../config/api_config.dart';
-import '../providers/chat_provider.dart';
-import '../providers/alert_provider.dart';
-import '../services/api_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -15,6 +11,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final _urlCtrl   = TextEditingController();
   final _tokenCtrl = TextEditingController();
+  String _mode     = 'natsume';
   bool _saving     = false;
   bool _obscure    = true;
 
@@ -26,8 +23,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadCurrent() async {
     final cfg = await ApiConfig.load();
-    _urlCtrl.text   = cfg.baseUrl;
-    _tokenCtrl.text = cfg.token;
+    setState(() {
+      _urlCtrl.text   = cfg.baseUrl;
+      _tokenCtrl.text = cfg.token;
+      _mode           = cfg.backendMode;
+    });
   }
 
   @override
@@ -43,14 +43,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (url.isEmpty) return;
 
     setState(() => _saving = true);
-    await ApiConfig.save(baseUrl: url, token: token);
+    await ApiConfig.save(baseUrl: url, token: token, backendMode: _mode);
 
-    // Reload providers with new config
     if (mounted) {
-      final cfg     = await ApiConfig.load();
-      final api     = ApiService(cfg);
-      context.read<ChatProvider>(); // no direct rebind — full restart required
-      context.read<AlertProvider>();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Paramètres sauvegardés — redémarrez l\'app')),
       );
@@ -71,16 +66,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // ── Serveur ─────────────────────────────────────────────────────────
-          Text('Serveur Natsume', style: Theme.of(context).textTheme.labelLarge),
+          // ── Mode serveur ─────────────────────────────────────────────────────
+          Text('Mode backend', style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(
+                value: 'natsume',
+                label: Text('Natsume'),
+                icon: Icon(Icons.auto_awesome_outlined),
+              ),
+              ButtonSegment(
+                value: 'lunacedia',
+                label: Text('LunAcedia'),
+                icon: Icon(Icons.inbox_outlined),
+              ),
+            ],
+            selected: {_mode},
+            onSelectionChanged: (v) => setState(() => _mode = v.first),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _mode == 'natsume'
+                ? 'Natsume Core — chat companion + alertes intégrées'
+                : 'LunAcedia — serveur d\'information autonome (events, digest)',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+          ),
+          const SizedBox(height: 20),
+          // ── Connexion ────────────────────────────────────────────────────────
+          Text('Connexion', style: Theme.of(context).textTheme.labelLarge),
           const SizedBox(height: 8),
           TextField(
             controller: _urlCtrl,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'URL de base',
-              hintText: 'http://192.168.1.x:3333',
-              prefixIcon: Icon(Icons.link),
-              border: OutlineInputBorder(),
+              hintText: _mode == 'natsume'
+                  ? 'http://192.168.1.x:3333'
+                  : 'http://192.168.1.x:4001',
+              prefixIcon: const Icon(Icons.link),
+              border: const OutlineInputBorder(),
             ),
             keyboardType: TextInputType.url,
           ),
@@ -89,7 +113,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             controller: _tokenCtrl,
             obscureText: _obscure,
             decoration: InputDecoration(
-              labelText: 'Token (ADMIN_SECRET)',
+              labelText: _mode == 'natsume' ? 'Token (ADMIN_SECRET)' : 'Token (ACEDIA_SECRET)',
               prefixIcon: const Icon(Icons.key_outlined),
               border: const OutlineInputBorder(),
               suffixIcon: IconButton(
@@ -102,7 +126,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           FilledButton.icon(
             onPressed: _saving ? null : _save,
             icon: _saving
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
                 : const Icon(Icons.save_outlined),
             label: const Text('Sauvegarder'),
           ),
@@ -115,7 +143,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: const Text("Lun'Avaritia"),
-            subtitle: const Text('v1.0.0 — companion mobile Natsume'),
+            subtitle: const Text('v1.1.0 — companion mobile Natsume / LunAcedia'),
             contentPadding: EdgeInsets.zero,
           ),
         ],

@@ -13,6 +13,9 @@ _Android companion app for the Lun ecosystem. Chat with Natsume, monitor your al
 
 </div>
 
+> [!NOTE]
+> Fully standalone — connects to Natsume Core or LunAcedia, switchable from the settings screen with no rebuild required. Part of the [Lun' ecosystem](https://github.com/CrOliX-AltF4).
+
 ---
 
 ## Quick start
@@ -71,6 +74,18 @@ Each release publishes a **debug APK** as a GitHub Release asset (CI-built, no s
 To install: download `app-debug.apk` from [Releases](https://github.com/CrOliX-AltF4/LunAvaritia/releases), enable "install from unknown sources" on your device, install via file manager or `adb install`.
 
 > **Secret required** — add `GOOGLE_SERVICES_JSON_B64` to repository secrets (base64-encoded `google-services.json`) for the APK build workflow.
+
+---
+
+## Lun ecosystem
+
+| Project | Role |
+|---|---|
+| [LunAtar](https://github.com/CrOliX-AltF4/LunAtar) | AI dev pipeline — intent → code |
+| [LunAcedia](https://github.com/CrOliX-AltF4/LunAcedia) | Information infrastructure — events · actions · AI butler |
+| **LunAvaritia** | Mobile companion — Android |
+| [LunImago](https://github.com/CrOliX-AltF4/LunImago) | Imitation learning — gameplay → ONNX policy |
+| LunAnima | AI companion core — private |
 
 ---
 

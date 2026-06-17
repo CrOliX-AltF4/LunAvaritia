@@ -9,12 +9,12 @@
 
 **pocket → companion**
 
-_Android companion app for the Lun ecosystem. Chat with Natsume, monitor your alert feed, receive push notifications — from your pocket._
+_Android companion app for the Lun ecosystem. Monitor your alert feed, chat with the AI butler, receive push notifications — from your pocket._
 
 </div>
 
 > [!NOTE]
-> Fully standalone — connects to Natsume Core or LunAcedia, switchable from the settings screen with no rebuild required. Part of the [Lun' ecosystem](https://github.com/CrOliX-AltF4).
+> Fully standalone — connects directly to LunAcedia (default) or optionally to Natsume Core for enhanced AI, switchable from the settings screen with no rebuild required. Part of the [Lun' ecosystem](https://github.com/CrOliX-AltF4).
 
 ---
 
@@ -38,8 +38,8 @@ Two modes, switchable from the settings screen — no rebuild required.
 
 | Mode | Backend | Endpoints used |
 |---|---|---|
-| **Natsume** (default) | Natsume Core | `/api/mobile/chat` · `/api/mobile/alerts` · `/api/mobile/status` |
-| **LunAcedia** | LunAcedia server | `/api/chat` · `/api/events` · `/api/devices/push-token` |
+| **LunAcedia** (default) | LunAcedia server | `/api/chat` · `/api/events` · `/api/devices/push-token` |
+| **Natsume** | Natsume Core | `/api/mobile/chat` · `/api/mobile/alerts` · `/api/mobile/status` |
 
 In LunAcedia mode, `markRead` / `markAllRead` are client-side only — LunAcedia has no server-side read state.
 

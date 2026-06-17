@@ -12,7 +12,7 @@ class ApiConfig {
   final String baseUrl;
   final String token;
 
-  /// 'natsume' (default) or 'lunacedia'
+  /// 'lunacedia' (default) or 'natsume'
   final String backendMode;
 
   static Future<ApiConfig> load() async {
@@ -20,7 +20,7 @@ class ApiConfig {
     return ApiConfig._(
       baseUrl:     prefs.getString(_keyBaseUrl)     ?? defaultBaseUrl,
       token:       prefs.getString(_keyToken)       ?? '',
-      backendMode: prefs.getString(_keyBackendMode) ?? 'natsume',
+      backendMode: prefs.getString(_keyBackendMode) ?? 'lunacedia',
     );
   }
 

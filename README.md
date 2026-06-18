@@ -83,7 +83,7 @@ To install: download `app-debug.apk` from [Releases](https://github.com/CrOliX-A
 | ---------------------------------------------------------- | --------------------------------------------------------- |
 | [LunIra](https://github.com/CrOliX-AltF4/LunIra)           | AI dev pipeline — intent → code                           |
 | [LunAcedia](https://github.com/CrOliX-AltF4/LunAcedia)     | Information infrastructure — events · actions · AI butler |
-| [LunAvaritia](https://github.com/CrOliX-AltF4/LunAvaritia) | Mobile companion — Android                                |
+| **LunAvaritia**                                            | Mobile companion — Android                                |
 | [LunGula](https://github.com/CrOliX-AltF4/LunGula)         | Imitation learning — gameplay → ONNX policy               |
 | LunAnima                                                   | AI companion core — private                               |
 

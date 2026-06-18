@@ -70,7 +70,10 @@ jobs:
             - name: Build APK (debug)
               run: flutter build apk --debug
 
+            - name: Rename APK
+              run: mv build/app/outputs/flutter-apk/app-debug.apk build/app/outputs/flutter-apk/lunavaritia-${{ github.ref_name }}.apk
+
             - name: Upload APK to release
               uses: softprops/action-gh-release@v2
               with:
-                  files: build/app/outputs/flutter-apk/app-debug.apk
+                  files: build/app/outputs/flutter-apk/lunavaritia-${{ github.ref_name }}.apk

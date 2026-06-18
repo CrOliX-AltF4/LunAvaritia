@@ -11,12 +11,42 @@ class AlertFeedScreen extends StatefulWidget {
 }
 
 class _AlertFeedScreenState extends State<AlertFeedScreen> {
+  bool _digestLoading = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AlertProvider>().load();
     });
+  }
+
+  Future<void> _showDigest() async {
+    setState(() => _digestLoading = true);
+    try {
+      final digest = await context.read<AlertProvider>().fetchDigest();
+      if (!mounted) return;
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (_) => _DigestSheet(digest: digest),
+      );
+    } on UnimplementedError {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Digest non disponible en mode Natsume')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur : $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _digestLoading = false);
+    }
   }
 
   @override
@@ -38,6 +68,21 @@ class _AlertFeedScreenState extends State<AlertFeedScreen> {
           ],
         ),
         actions: [
+          if (_digestLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.auto_awesome_outlined),
+              onPressed: _showDigest,
+              tooltip: 'Digest',
+            ),
           if (provider.unreadCount > 0)
             TextButton.icon(
               onPressed: provider.markAllRead,
@@ -51,6 +96,64 @@ class _AlertFeedScreenState extends State<AlertFeedScreen> {
           _FilterBar(current: provider.filter, onSelected: provider.setFilter),
           Expanded(child: _Body(provider: provider)),
         ],
+      ),
+    );
+  }
+}
+
+// ── Digest bottom sheet ───────────────────────────────────────────────────────
+
+class _DigestSheet extends StatelessWidget {
+  const _DigestSheet({required this.digest});
+
+  final String digest;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.5,
+      minChildSize: 0.3,
+      maxChildSize: 0.9,
+      builder: (_, scrollCtrl) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colors.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(Icons.auto_awesome_outlined, color: colors.primary, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Digest',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: SingleChildScrollView(
+                controller: scrollCtrl,
+                child: Text(digest, style: const TextStyle(fontSize: 15, height: 1.5)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

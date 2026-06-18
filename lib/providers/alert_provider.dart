@@ -81,4 +81,8 @@ class AlertProvider extends ChangeNotifier {
     filter = f;
     notifyListeners();
   }
+
+  Future<String> fetchDigest() async {
+    return _api.getDigest();
+  }
 }

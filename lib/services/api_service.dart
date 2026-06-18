@@ -53,9 +53,16 @@ class ApiService extends BackendClient {
   // ── Alerts ────────────────────────────────────────────────────────────────
 
   @override
-  Future<List<Alert>> getAlerts({int limit = 50, int offset = 0, bool? unread}) async {
+  Future<List<Alert>> getAlerts({
+    int limit = 50,
+    int offset = 0,
+    bool? unread,
+    String? source,
+    String? priority,
+  }) async {
     final q = StringBuffer('/api/mobile/alerts?limit=$limit&offset=$offset');
     if (unread == true) q.write('&unread=true');
+    // source and priority filters not supported by Natsume API — ignored
     final data = await _get(q.toString());
     final items = data['alerts'] as List<dynamic>? ?? [];
     return items
@@ -72,6 +79,11 @@ class ApiService extends BackendClient {
   @override
   Future<void> markAllRead() async {
     await _post('/api/mobile/alerts/read-all', {});
+  }
+
+  @override
+  Future<String> getDigest() async {
+    throw UnimplementedError('Digest not available in Natsume mode');
   }
 
   // ── Push token ────────────────────────────────────────────────────────────

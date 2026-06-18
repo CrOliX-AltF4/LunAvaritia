@@ -38,11 +38,18 @@ class LunAcediaClient extends BackendClient {
   // ── Events → Alerts ───────────────────────────────────────────────────────
 
   @override
-  Future<List<Alert>> getAlerts({int limit = 50, int offset = 0, bool? unread}) async {
-    final resp = await http.get(
-      _uri('/api/events?limit=$limit&offset=$offset'),
-      headers: _config.headers,
-    );
+  Future<List<Alert>> getAlerts({
+    int limit = 50,
+    int offset = 0,
+    bool? unread,
+    String? source,
+    String? priority,
+  }) async {
+    final q = StringBuffer('/api/events?limit=$limit&offset=$offset');
+    if (unread == true) q.write('&unread=true');
+    if (source != null) q.write('&source=$source');
+    if (priority != null) q.write('&priority=$priority');
+    final resp = await http.get(_uri(q.toString()), headers: _config.headers);
     if (resp.statusCode >= 400) throw ApiException(resp.statusCode, resp.body);
     final data = jsonDecode(resp.body) as Map<String, dynamic>;
     final items = data['events'] as List<dynamic>? ?? [];
@@ -60,12 +67,31 @@ class LunAcediaClient extends BackendClient {
         'url': e['url'],
       });
 
-  // LunAcedia has no server-side read state — silently ignored
   @override
-  Future<void> markRead(String id) async {}
+  Future<void> markRead(String id) async {
+    final resp = await http.post(
+      _uri('/api/events/$id/read'),
+      headers: _config.headers,
+    );
+    if (resp.statusCode >= 400) throw ApiException(resp.statusCode, resp.body);
+  }
 
   @override
-  Future<void> markAllRead() async {}
+  Future<void> markAllRead() async {
+    final resp = await http.post(
+      _uri('/api/events/read-all'),
+      headers: _config.headers,
+    );
+    if (resp.statusCode >= 400) throw ApiException(resp.statusCode, resp.body);
+  }
+
+  @override
+  Future<String> getDigest() async {
+    final resp = await http.get(_uri('/api/digest'), headers: _config.headers);
+    if (resp.statusCode >= 400) throw ApiException(resp.statusCode, resp.body);
+    final data = jsonDecode(resp.body) as Map<String, dynamic>;
+    return data['response'] as String? ?? '';
+  }
 
   // ── Push token ────────────────────────────────────────────────────────────
 

@@ -13,8 +13,15 @@ class ApiException implements Exception {
 abstract class BackendClient {
   Future<ChatMessage> sendChat(String text);
   Future<NatsumeStatus> getStatus();
-  Future<List<Alert>> getAlerts({int limit = 50, int offset = 0, bool? unread});
+  Future<List<Alert>> getAlerts({
+    int limit = 50,
+    int offset = 0,
+    bool? unread,
+    String? source,
+    String? priority,
+  });
   Future<void> markRead(String id);
   Future<void> markAllRead();
+  Future<String> getDigest();
   Future<void> registerPushToken(String token);
 }

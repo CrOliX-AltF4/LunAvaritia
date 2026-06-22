@@ -69,5 +69,8 @@ jobs:
             - name: Analyze
               run: flutter analyze
 
+            - name: Test
+              run: flutter test
+
             - name: Build APK (debug)
               run: flutter build apk --debug

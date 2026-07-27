@@ -147,7 +147,7 @@ class _StatusBar extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Text(
-            status.affinityTier,
+            '♥ ${status.affinityTier}/5',
             style: TextStyle(fontSize: 12, color: colors.primary, fontWeight: FontWeight.w500),
           ),
         ],

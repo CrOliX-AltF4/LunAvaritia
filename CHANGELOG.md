@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.1] — 2026-07-29
+
+### Fixes
+
+- `NatsumeStatus.affinityTier` crashed on `/api/mobile/status` when the server sent an `int`
+  and the client parsed it as a `String` — now parsed with `(json['affinityTier'] as num?)?.toInt()`,
+  regression-tested against a realistic payload shape
+- Mobile identity resolves to the same "master" account as PC/Discord — no more guest fallback
+
 ## [1.1.0] — 2026-06-16
 
 ### Features

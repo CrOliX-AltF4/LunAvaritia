@@ -82,5 +82,15 @@ void main() {
 
       expect(find.text('PR merged'), findsOneWidget);
     });
+
+    testWidgets('tapping the digest button shows the digest sheet', (tester) async {
+      await tester.pumpWidget(_buildScreen());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.auto_awesome_outlined));
+      await tester.pumpAndSettle();
+
+      expect(find.text('digest'), findsOneWidget);
+    });
   });
 }

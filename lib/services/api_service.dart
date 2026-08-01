@@ -83,7 +83,8 @@ class ApiService extends BackendClient {
 
   @override
   Future<String> getDigest() async {
-    throw UnimplementedError('Digest not available in Natsume mode');
+    final data = await _get('/api/proxy/acedia/digest');
+    return data['response'] as String? ?? '';
   }
 
   // ── Push token ────────────────────────────────────────────────────────────

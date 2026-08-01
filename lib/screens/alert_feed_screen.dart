@@ -26,14 +26,7 @@ class _AlertFeedScreenState extends State<AlertFeedScreen> {
     try {
       final digest = await context.read<AlertProvider>().fetchDigest();
       if (!mounted) return;
-      showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        builder: (_) => _DigestSheet(digest: digest),
-      );
+      await showDigestSheet(context, digest);
     } on UnimplementedError {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -102,6 +95,19 @@ class _AlertFeedScreenState extends State<AlertFeedScreen> {
 }
 
 // ── Digest bottom sheet ───────────────────────────────────────────────────────
+
+/// Shared entry point for both the manual "Digest" button (AppBar action, this screen) and
+/// the automatic digest-on-wake trigger (MainShell, via DigestGate) — one sheet, one look.
+Future<void> showDigestSheet(BuildContext context, String digest) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) => _DigestSheet(digest: digest),
+  );
+}
 
 class _DigestSheet extends StatelessWidget {
   const _DigestSheet({required this.digest});

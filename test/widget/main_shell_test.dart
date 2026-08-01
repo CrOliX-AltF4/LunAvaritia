@@ -78,7 +78,7 @@ void main() {
     testWidgets('does not show the digest sheet when the gate blocks it', (tester) async {
       SharedPreferences.setMockInitialValues({});
       final backend = _FakeBackend(digest: 'Overnight: 3 emails, 1 meeting.');
-      final gate = DigestGate();
+      const gate = DigestGate();
       await gate.markShown(); // simulate "already shown recently"
 
       await tester.pumpWidget(_buildShell(backend, digestGate: gate));

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/alert_provider.dart';
@@ -54,7 +56,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       // happened" would retry on every resume until the gap naturally elapses on its own.
       await widget.digestGate.markShown();
       if (!mounted || digest.trim().isEmpty) return;
-      await showDigestSheet(context, digest);
+      // Not awaited — see the identical note in AlertFeedScreen._showDigest(); nothing here
+      // depends on knowing when the sheet is dismissed.
+      unawaited(showDigestSheet(context, digest));
     } catch (_) {
       // Silent — an auto-trigger shouldn't nag on a transient/offline failure, and not
       // calling markShown() here means the next resume retries rather than giving up for

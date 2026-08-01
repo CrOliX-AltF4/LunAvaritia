@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/alert_provider.dart';
@@ -26,7 +28,10 @@ class _AlertFeedScreenState extends State<AlertFeedScreen> {
     try {
       final digest = await context.read<AlertProvider>().fetchDigest();
       if (!mounted) return;
-      await showDigestSheet(context, digest);
+      // Deliberately not awaited — showModalBottomSheet()'s future only resolves when the
+      // sheet is dismissed, not when it opens. Awaiting it here would leave _digestLoading
+      // (and its AppBar spinner) stuck for as long as the sheet stays open.
+      unawaited(showDigestSheet(context, digest));
     } on UnimplementedError {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

@@ -10,6 +10,7 @@ import 'package:lunavaritia/providers/alert_provider.dart';
 import 'package:lunavaritia/providers/chat_provider.dart';
 import 'package:lunavaritia/screens/main_shell.dart';
 import 'package:lunavaritia/services/backend_client.dart';
+import 'package:lunavaritia/services/deep_link_router.dart';
 import 'package:lunavaritia/services/digest_gate.dart';
 
 class _FakeBackend implements BackendClient {
@@ -51,13 +52,19 @@ class _FakeBackend implements BackendClient {
   Future<void> registerPushToken(String token) async {}
 }
 
-Widget _buildShell(_FakeBackend backend, {required DigestGate digestGate}) {
+Widget _buildShell(
+  _FakeBackend backend, {
+  required DigestGate digestGate,
+  DeepLinkRouter? deepLinkRouter,
+}) {
   return MultiProvider(
     providers: [
       ChangeNotifierProvider<ChatProvider>(create: (_) => ChatProvider(backend)),
       ChangeNotifierProvider<AlertProvider>(create: (_) => AlertProvider(backend)),
     ],
-    child: MaterialApp(home: MainShell(digestGate: digestGate)),
+    child: MaterialApp(
+      home: MainShell(digestGate: digestGate, deepLinkRouter: deepLinkRouter),
+    ),
   );
 }
 
@@ -108,6 +115,59 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(NavigationBar), findsOneWidget);
+    });
+  });
+
+  group('MainShell — deep-link tab switching (LunAvaritia gap #3)', () {
+    int selectedIndex(WidgetTester tester) =>
+        tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex;
+
+    testWidgets('switches to the Alertes tab when a deep link is already pending on first build', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final router = DeepLinkRouter.instance..consume();
+      router.requestTab(AppTab.alerts);
+
+      await tester.pumpWidget(_buildShell(
+        _FakeBackend(),
+        digestGate: const DigestGate(minGap: Duration(hours: 4)),
+        deepLinkRouter: router,
+      ));
+      await tester.pumpAndSettle();
+
+      expect(selectedIndex(tester), AppTab.alerts.index);
+      expect(router.pending, isNull);
+    });
+
+    testWidgets('switches tab when a deep link request arrives after the shell is already built', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final router = DeepLinkRouter.instance..consume();
+
+      await tester.pumpWidget(_buildShell(
+        _FakeBackend(),
+        digestGate: const DigestGate(minGap: Duration(hours: 4)),
+        deepLinkRouter: router,
+      ));
+      await tester.pumpAndSettle();
+      expect(selectedIndex(tester), AppTab.chat.index);
+
+      router.requestTab(AppTab.alerts);
+      await tester.pumpAndSettle();
+
+      expect(selectedIndex(tester), AppTab.alerts.index);
+    });
+
+    testWidgets('does not switch tabs when nothing is pending', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final router = DeepLinkRouter.instance..consume();
+
+      await tester.pumpWidget(_buildShell(
+        _FakeBackend(),
+        digestGate: const DigestGate(minGap: Duration(hours: 4)),
+        deepLinkRouter: router,
+      ));
+      await tester.pumpAndSettle();
+
+      expect(selectedIndex(tester), AppTab.chat.index);
     });
   });
 }

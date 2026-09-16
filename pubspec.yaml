@@ -14,8 +14,10 @@ dependencies:
   http: ^1.2.2
   # State management
   provider: ^6.1.2
-  # Local storage (server URL + token)
+  # Local storage (server URL, backend mode, chat history — non-secret)
   shared_preferences: ^2.3.0
+  # Secure storage for the server bearer token
+  flutter_secure_storage: ^10.3.4
   # Firebase push notifications
   firebase_core: ^3.3.0
   firebase_messaging: ^15.1.0

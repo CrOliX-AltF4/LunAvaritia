@@ -10,7 +10,9 @@ import 'alert_feed_screen.dart';
 import 'settings_screen.dart';
 
 class MainShell extends StatefulWidget {
-  const MainShell({
+  // Not const — deepLinkRouter's default falls back to DeepLinkRouter.instance, a runtime
+  // singleton, which can't appear in a const constructor's initializer list.
+  MainShell({
     super.key,
     this.digestGate = const DigestGate(),
     DeepLinkRouter? deepLinkRouter,

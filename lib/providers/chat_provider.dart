@@ -1,18 +1,32 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import '../models/chat_message.dart';
 import '../models/natsume_status.dart';
 import '../services/backend_client.dart';
+import '../services/chat_history_store.dart';
 
 class ChatProvider extends ChangeNotifier {
-  ChatProvider(this._api);
+  ChatProvider(this._api, {ChatHistoryStore history = const ChatHistoryStore()})
+      : _history = history {
+    _loadHistory();
+  }
 
   final BackendClient _api;
+  final ChatHistoryStore _history;
 
   final List<ChatMessage> messages = [];
   NatsumeStatus status = NatsumeStatus.empty;
   bool sending = false;
   bool loadingStatus = false;
   String? error;
+
+  Future<void> _loadHistory() async {
+    final stored = await _history.load();
+    if (stored.isEmpty) return;
+    messages.addAll(stored);
+    notifyListeners();
+  }
 
   Future<void> send(String text) async {
     if (text.trim().isEmpty || sending) return;
@@ -33,6 +47,9 @@ class ChatProvider extends ChangeNotifier {
     } finally {
       sending = false;
       notifyListeners();
+      // Best-effort — a failed save only costs the next launch this turn's messages,
+      // never the running session.
+      unawaited(_history.save(messages));
     }
   }
 

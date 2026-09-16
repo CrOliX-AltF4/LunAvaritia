@@ -33,7 +33,7 @@ class LunAvaritiaApp extends StatelessWidget {
         theme: _buildTheme(Brightness.light),
         darkTheme: _buildTheme(Brightness.dark),
         themeMode: ThemeMode.system,
-        home: const MainShell(),
+        home: MainShell(),
       ),
     );
   }

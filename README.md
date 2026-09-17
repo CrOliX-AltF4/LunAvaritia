@@ -15,6 +15,8 @@ _Android companion app for the Lun ecosystem. Monitor your alert feed, chat with
 
 > [!NOTE]
 > Fully standalone — connects directly to LunAcedia (default) or optionally to Natsume Core for enhanced AI, switchable from the settings screen with no rebuild required. Part of the [Lun' ecosystem](https://github.com/CrOliX-AltF4).
+>
+> **Doctrine** — ecosystem constitution and standards live in LunAnima's `docs/constitution.md` and `docs/standards/` (private repo), see in particular `04-securite-auth.md` (this app's token storage) and `03-ux-interface.md`.
 
 ---
 

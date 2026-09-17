@@ -51,3 +51,25 @@ jobs:
                   l_max_size: 1000
                   xl_label: "size/XL"
                   fail_if_xl: false
+
+    version-bump:
+        name: Require pubspec.yaml version bump (feat/fix)
+        runs-on: ubuntu-latest
+        # auto-tag.yml only tags (and release.yml only builds/publishes) when pubspec.yaml's
+        # version differs from the last tag — a feat/fix PR that forgets to bump it merges with
+        # green CI and never ships (found 2026-09-17: PR #19 and #20 both did this silently).
+        if: startsWith(github.event.pull_request.title, 'feat') || startsWith(github.event.pull_request.title, 'fix')
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Compare version against main
+              run: |
+                  git fetch origin main --depth=1
+                  base_version=$(git show origin/main:pubspec.yaml | grep '^version:' | awk '{print $2}')
+                  head_version=$(grep '^version:' pubspec.yaml | awk '{print $2}')
+                  if [ "$base_version" = "$head_version" ]; then
+                    echo "::error::pubspec.yaml version ($head_version) is unchanged from main — auto-tag.yml silently skips releasing when the tag already exists. Bump the version in this PR."
+                    exit 1
+                  fi

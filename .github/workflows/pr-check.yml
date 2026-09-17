@@ -70,6 +70,6 @@ jobs:
                   base_version=$(git show origin/main:pubspec.yaml | grep '^version:' | awk '{print $2}')
                   head_version=$(grep '^version:' pubspec.yaml | awk '{print $2}')
                   if [ "$base_version" = "$head_version" ]; then
-                    echo "::error::pubspec.yaml version ($head_version) is unchanged from main — auto-tag.yml silently skips releasing when the tag already exists. Bump the version in this PR (see CHANGELOG.md)."
+                    echo "::error::pubspec.yaml version ($head_version) is unchanged from main — auto-tag.yml silently skips releasing when the tag already exists. Bump the version in this PR."
                     exit 1
                   fi

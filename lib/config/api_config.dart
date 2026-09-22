@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -11,6 +12,15 @@ const _secureStorage = FlutterSecureStorage();
 
 class ApiConfig {
   ApiConfig._({required this.baseUrl, required this.token, required this.backendMode});
+
+  /// Test-only constructor — skips SharedPreferences/secure storage entirely so a unit test
+  /// can build a config in one line instead of mocking two platform channels.
+  @visibleForTesting
+  factory ApiConfig.forTest({
+    required String baseUrl,
+    String token = '',
+    String backendMode = 'lunacedia',
+  }) => ApiConfig._(baseUrl: baseUrl, token: token, backendMode: backendMode);
 
   final String baseUrl;
   final String token;

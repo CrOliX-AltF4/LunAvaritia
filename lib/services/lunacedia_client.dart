@@ -6,6 +6,21 @@ import '../models/chat_message.dart';
 import '../models/natsume_status.dart';
 import 'backend_client.dart';
 
+/// Maps a raw LunAcedia event (GET /api/events) to the shared Alert model.
+/// Top-level and pure so it's testable without any HTTP plumbing (ADR-013 I4).
+Alert eventToAlert(Map<String, dynamic> e) => Alert.fromJson({
+      'id': e['dedupeKey'],
+      'type': e['type'],
+      'title': e['title'],
+      'priority': e['priority'],
+      'ts': e['ts'],
+      // LunAcedia's own read status, not hardcoded false — an already-read alert must not
+      // come back as unread on the next fetch (ADR-013 I4, real bug found reading the code).
+      'read': e['read'] ?? false,
+      'body': e['body'],
+      'url': e['url'],
+    });
+
 class LunAcediaClient extends BackendClient {
   LunAcediaClient(this._config);
 
@@ -53,19 +68,8 @@ class LunAcediaClient extends BackendClient {
     if (resp.statusCode >= 400) throw ApiException(resp.statusCode, resp.body);
     final data = jsonDecode(resp.body) as Map<String, dynamic>;
     final items = data['events'] as List<dynamic>? ?? [];
-    return items.cast<Map<String, dynamic>>().map(_eventToAlert).toList();
+    return items.cast<Map<String, dynamic>>().map(eventToAlert).toList();
   }
-
-  Alert _eventToAlert(Map<String, dynamic> e) => Alert.fromJson({
-        'id': e['dedupeKey'],
-        'type': e['type'],
-        'title': e['title'],
-        'priority': e['priority'],
-        'ts': e['ts'],
-        'read': false,
-        'body': e['body'],
-        'url': e['url'],
-      });
 
   @override
   Future<void> markRead(String id) async {

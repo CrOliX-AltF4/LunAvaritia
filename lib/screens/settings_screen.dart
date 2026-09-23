@@ -11,7 +11,9 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final _urlCtrl   = TextEditingController();
   final _tokenCtrl = TextEditingController();
-  String _mode     = 'natsume';
+  // Matches ApiConfig.load()'s own fallback so a fresh install doesn't flash 'natsume'
+  // for one frame before _loadCurrent() resolves and overwrites it.
+  String _mode     = 'lunacedia';
   bool _saving     = false;
   bool _obscure    = true;
 
@@ -113,7 +115,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             controller: _tokenCtrl,
             obscureText: _obscure,
             decoration: InputDecoration(
-              labelText: _mode == 'natsume' ? 'Token (ADMIN_SECRET)' : 'Token (ACEDIA_SECRET)',
+              labelText: _mode == 'natsume' ? 'Token (MOBILE_API_KEY)' : 'Token (ACEDIA_SECRET)',
               prefixIcon: const Icon(Icons.key_outlined),
               border: const OutlineInputBorder(),
               suffixIcon: IconButton(

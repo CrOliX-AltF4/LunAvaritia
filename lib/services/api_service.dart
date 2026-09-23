@@ -83,7 +83,9 @@ class ApiService extends BackendClient {
 
   @override
   Future<String> getDigest() async {
-    final data = await _get('/api/proxy/acedia/digest');
+    // /api/mobile/digest, not /api/proxy/acedia/digest — the latter isn't under /api/mobile/*,
+    // so a MOBILE_API_KEY-only caller (no panel session) got a silent 401 on it (ADR-013 I4).
+    final data = await _get('/api/mobile/digest');
     return data['response'] as String? ?? '';
   }
 

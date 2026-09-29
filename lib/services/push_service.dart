@@ -54,16 +54,6 @@ class PushService {
       sound: true,
     );
 
-    // Register token with server
-    final token = await FirebaseMessaging.instance.getToken();
-    if (token != null) {
-      try {
-        await _api.registerPushToken(token);
-      } catch (_) {
-        // Non-fatal — app works without push
-      }
-    }
-
     // Refresh token handler
     FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
       try {
@@ -104,6 +94,15 @@ class PushService {
     // after all the listeners above are already wired, so a cold-start tap isn't missed.
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) _routeToPayload(initialMessage.data);
+
+    // Registered with the server LAST: it is the only step that needs the network, and a server out of reach
+    // must never delay the listeners above (it used to run first, inside a startup the UI waited on).
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null) await _api.registerPushToken(token);
+    } catch (_) {
+      // Non-fatal — the app works without push; the token is registered again on the next start/refresh.
+    }
   }
 
   /// Single choke point for every notification-tap entry point (foreground-shown local

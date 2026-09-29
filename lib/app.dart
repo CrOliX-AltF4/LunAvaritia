@@ -4,14 +4,7 @@ import 'config/api_config.dart';
 import 'providers/alert_provider.dart';
 import 'providers/chat_provider.dart';
 import 'screens/main_shell.dart';
-import 'services/api_service.dart';
 import 'services/backend_client.dart';
-import 'services/lunacedia_client.dart';
-
-BackendClient _buildClient(ApiConfig config) {
-  if (config.backendMode == 'lunacedia') return LunAcediaClient(config);
-  return ApiService(config);
-}
 
 class LunAvaritiaApp extends StatelessWidget {
   const LunAvaritiaApp({super.key, required this.config});
@@ -20,7 +13,7 @@ class LunAvaritiaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final client = _buildClient(config);
+    final client = buildBackendClient(config);
 
     return MultiProvider(
       providers: [

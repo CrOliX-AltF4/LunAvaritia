@@ -1,10 +1,9 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/alert.dart';
 import '../models/chat_message.dart';
 import '../models/natsume_status.dart';
 import 'backend_client.dart';
+import 'http_transport.dart';
 
 /// Maps a raw LunAcedia event (GET /api/events) to the shared Alert model.
 /// Top-level and pure so it's testable without any HTTP plumbing (ADR-013 I4).
@@ -21,24 +20,19 @@ Alert eventToAlert(Map<String, dynamic> e) => Alert.fromJson({
       'url': e['url'],
     });
 
+/// LunAcedia on its own (standalone mode).
 class LunAcediaClient extends BackendClient {
-  LunAcediaClient(this._config);
+  LunAcediaClient(ApiConfig config) : _http = HttpTransport(config);
 
-  final ApiConfig _config;
-
-  Uri _uri(String path) => Uri.parse('${_config.baseUrl}$path');
+  final HttpTransport _http;
 
   // ── Chat ──────────────────────────────────────────────────────────────────
 
   @override
   Future<ChatMessage> sendChat(String text) async {
-    final resp = await http.post(
-      _uri('/api/chat'),
-      headers: _config.headers,
-      body: jsonEncode({'text': text}),
+    final data = asObject(
+      await _http.post('/api/chat', body: {'text': text}, timeout: HttpTransport.chatTimeout),
     );
-    if (resp.statusCode >= 400) throw ApiException(resp.statusCode, resp.body);
-    final data = jsonDecode(resp.body) as Map<String, dynamic>;
     return ChatMessage(
       role: MessageRole.natsume,
       text: data['response'] as String? ?? '',
@@ -64,36 +58,24 @@ class LunAcediaClient extends BackendClient {
     if (unread == true) q.write('&unread=true');
     if (source != null) q.write('&source=$source');
     if (priority != null) q.write('&priority=$priority');
-    final resp = await http.get(_uri(q.toString()), headers: _config.headers);
-    if (resp.statusCode >= 400) throw ApiException(resp.statusCode, resp.body);
-    final data = jsonDecode(resp.body) as Map<String, dynamic>;
+    final data = asObject(await _http.get(q.toString()));
     final items = data['events'] as List<dynamic>? ?? [];
     return items.cast<Map<String, dynamic>>().map(eventToAlert).toList();
   }
 
   @override
   Future<void> markRead(String id) async {
-    final resp = await http.post(
-      _uri('/api/events/$id/read'),
-      headers: _config.headers,
-    );
-    if (resp.statusCode >= 400) throw ApiException(resp.statusCode, resp.body);
+    await _http.post('/api/events/${Uri.encodeComponent(id)}/read');
   }
 
   @override
   Future<void> markAllRead() async {
-    final resp = await http.post(
-      _uri('/api/events/read-all'),
-      headers: _config.headers,
-    );
-    if (resp.statusCode >= 400) throw ApiException(resp.statusCode, resp.body);
+    await _http.post('/api/events/read-all');
   }
 
   @override
   Future<String> getDigest() async {
-    final resp = await http.get(_uri('/api/digest'), headers: _config.headers);
-    if (resp.statusCode >= 400) throw ApiException(resp.statusCode, resp.body);
-    final data = jsonDecode(resp.body) as Map<String, dynamic>;
+    final data = asObject(await _http.get('/api/digest', timeout: HttpTransport.chatTimeout));
     return data['response'] as String? ?? '';
   }
 
@@ -101,11 +83,6 @@ class LunAcediaClient extends BackendClient {
 
   @override
   Future<void> registerPushToken(String token) async {
-    final resp = await http.post(
-      _uri('/api/devices/push-token'),
-      headers: _config.headers,
-      body: jsonEncode({'token': token}),
-    );
-    if (resp.statusCode >= 400) throw ApiException(resp.statusCode, resp.body);
+    await _http.post('/api/devices/push-token', body: {'token': token});
   }
 }

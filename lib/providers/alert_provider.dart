@@ -36,10 +36,10 @@ class AlertProvider extends ChangeNotifier {
     notifyListeners();
     try {
       _alerts = await _api.getAlerts();
-    } on ApiException catch (e) {
-      error = 'Erreur ${e.statusCode}';
-    } catch (_) {
-      error = 'Connexion impossible';
+    } on BackendError catch (e) {
+      error = e.message;
+    } catch (e) {
+      error = 'Erreur inattendue : $e';
     } finally {
       loading = false;
       notifyListeners();

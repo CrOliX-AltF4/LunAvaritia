@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config/api_config.dart';
+import '../services/app_version.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -142,11 +143,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 8),
           Text('À propos', style: Theme.of(context).textTheme.labelLarge),
           const SizedBox(height: 8),
-          const ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text("Lun'Avaritia"),
-            subtitle: Text('v1.1.0 — companion mobile Natsume / LunAcedia'),
-            contentPadding: EdgeInsets.zero,
+          // Read from the installed package (live check C18: "v1.1.0" was written by hand while 1.3.1 ran).
+          FutureBuilder<String>(
+            future: installedVersion(),
+            builder: (context, snap) => ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text("Lun'Avaritia"),
+              subtitle: Text(snap.data ?? '…'),
+              contentPadding: EdgeInsets.zero,
+            ),
           ),
         ],
       ),

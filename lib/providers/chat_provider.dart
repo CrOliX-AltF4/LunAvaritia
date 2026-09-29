@@ -40,10 +40,12 @@ class ChatProvider extends ChangeNotifier {
     try {
       final reply = await _api.sendChat(text.trim());
       messages.add(reply);
-    } on ApiException catch (e) {
-      error = 'Erreur ${e.statusCode} — ${e.message}';
+    } on BackendError catch (e) {
+      // The precise cause (unreachable, too slow, token refused, server error) — never a blanket
+      // "Connexion impossible" (live check 2026-09-29).
+      error = e.message;
     } catch (e) {
-      error = 'Connexion impossible';
+      error = 'Erreur inattendue : $e';
     } finally {
       sending = false;
       notifyListeners();

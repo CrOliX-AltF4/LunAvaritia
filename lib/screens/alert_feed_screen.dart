@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/alert_provider.dart';
+import '../services/backend_error.dart';
 import '../widgets/alert_card.dart';
 
 class AlertFeedScreen extends StatefulWidget {
@@ -32,15 +33,10 @@ class _AlertFeedScreenState extends State<AlertFeedScreen> {
       // sheet is dismissed, not when it opens. Awaiting it here would leave _digestLoading
       // (and its AppBar spinner) stuck for as long as the sheet stays open.
       unawaited(showDigestSheet(context, digest));
-    } on UnimplementedError {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Digest non disponible en mode Natsume')),
-      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur : $e')),
+        SnackBar(content: Text(e is BackendError ? e.message : 'Erreur inattendue : $e')),
       );
     } finally {
       if (mounted) setState(() => _digestLoading = false);

@@ -7,6 +7,7 @@ import 'package:lunavaritia/config/api_config.dart';
 import 'package:lunavaritia/models/assistant_identity.dart';
 import 'package:lunavaritia/screens/settings_screen.dart';
 import 'package:lunavaritia/services/backend_client.dart';
+import 'package:lunavaritia/services/update_checker.dart';
 
 const _secureStorageChannel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
 
@@ -24,8 +25,14 @@ void main() {
         .setMockMethodCallHandler(_secureStorageChannel, null);
   });
 
-  Future<void> pumpSettings(WidgetTester tester, IdentityProbe probe) async {
-    await tester.pumpWidget(MaterialApp(home: SettingsScreen(probe: probe)));
+  Future<void> pumpSettings(
+    WidgetTester tester,
+    IdentityProbe probe, {
+    Future<UpdateStatus> Function()? checkUpdate,
+  }) async {
+    await tester.pumpWidget(MaterialApp(
+      home: SettingsScreen(probe: probe, checkUpdate: checkUpdate ?? () async => const UpToDate('1.3.1')),
+    ));
     await tester.pumpAndSettle();
   }
 
@@ -84,6 +91,31 @@ void main() {
 
       expect(called, isFalse);
       expect(find.text('Renseignez une adresse.'), findsOneWidget);
+    });
+  });
+
+  group('SettingsScreen — updates (ADR-020 M1)', () {
+    Future<void> checkWith(WidgetTester tester, UpdateStatus status) async {
+      await pumpSettings(tester, (_) async => AssistantIdentity.unknown, checkUpdate: () async => status);
+      await tester.ensureVisible(find.text('Rechercher une mise à jour'));
+      await tester.tap(find.text('Rechercher une mise à jour'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('says when the app is up to date', (tester) async {
+      await checkWith(tester, const UpToDate('1.3.1'));
+      expect(find.text("L'application est à jour."), findsOneWidget);
+    });
+
+    testWidgets('offers the download of a newer version', (tester) async {
+      await checkWith(tester, const UpdateAvailable(AvailableUpdate(version: '1.4.0', downloadUrl: 'https://x/app.apk')));
+      expect(find.text('Télécharger la version 1.4.0'), findsOneWidget);
+    });
+
+    testWidgets('says why it could not check, never "à jour"', (tester) async {
+      await checkWith(tester, const UpdateUnknown('GitHub injoignable'));
+      expect(find.text('Impossible de vérifier : GitHub injoignable.'), findsOneWidget);
+      expect(find.text("L'application est à jour."), findsNothing);
     });
   });
 }

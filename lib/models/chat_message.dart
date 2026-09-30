@@ -1,4 +1,5 @@
-enum MessageRole { user, natsume }
+/// `assistant`: whoever answers — LunAcedia's assistant or the hub's companion (ADR-020 D2).
+enum MessageRole { user, assistant }
 
 class ChatMessage {
   ChatMessage({
@@ -16,7 +17,7 @@ class ChatMessage {
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     return ChatMessage(
       id:   json['id'] as String?,
-      role: (json['role'] as String?) == 'user' ? MessageRole.user : MessageRole.natsume,
+      role: (json['role'] as String?) == 'user' ? MessageRole.user : MessageRole.assistant,
       text: json['text'] as String? ?? json['response'] as String? ?? '',
       ts:   DateTime.now(),
     );
@@ -26,7 +27,7 @@ class ChatMessage {
   /// shape (which never round-trips `ts`, always "now" on load from the server).
   Map<String, dynamic> toLocalJson() => {
     'id':   id,
-    'role': role == MessageRole.user ? 'user' : 'natsume',
+    'role': role == MessageRole.user ? 'user' : 'assistant',
     'text': text,
     'ts':   ts.toIso8601String(),
   };
@@ -34,7 +35,7 @@ class ChatMessage {
   factory ChatMessage.fromLocalJson(Map<String, dynamic> json) {
     return ChatMessage(
       id:   json['id'] as String?,
-      role: (json['role'] as String?) == 'user' ? MessageRole.user : MessageRole.natsume,
+      role: (json['role'] as String?) == 'user' ? MessageRole.user : MessageRole.assistant,
       text: json['text'] as String? ?? '',
       ts:   DateTime.tryParse(json['ts'] as String? ?? '') ?? DateTime.now(),
     );

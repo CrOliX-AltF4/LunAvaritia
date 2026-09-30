@@ -21,7 +21,7 @@ void main() {
       final ts = DateTime.parse('2026-09-16T08:00:00.000Z');
       final messages = [
         ChatMessage(id: 'u1', role: MessageRole.user, text: 'Hi', ts: ts),
-        ChatMessage(id: 'n1', role: MessageRole.natsume, text: 'Hey.', ts: ts),
+        ChatMessage(id: 'n1', role: MessageRole.assistant, text: 'Hey.', ts: ts),
       ];
 
       await store.save(messages);
@@ -32,7 +32,7 @@ void main() {
       expect(loaded[0].role, MessageRole.user);
       expect(loaded[0].text, 'Hi');
       expect(loaded[0].ts, ts);
-      expect(loaded[1].role, MessageRole.natsume);
+      expect(loaded[1].role, MessageRole.assistant);
     });
 
     test('caps stored history at maxMessages, keeping the most recent', () async {

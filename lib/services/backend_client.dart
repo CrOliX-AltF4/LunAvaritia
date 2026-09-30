@@ -1,7 +1,8 @@
 import '../config/api_config.dart';
 import '../models/alert.dart';
+import '../models/assistant_identity.dart';
 import '../models/chat_message.dart';
-import '../models/natsume_status.dart';
+import '../models/companion_status.dart';
 import 'api_service.dart';
 import 'lunacedia_client.dart';
 
@@ -9,7 +10,11 @@ export 'backend_error.dart';
 
 abstract class BackendClient {
   Future<ChatMessage> sendChat(String text);
-  Future<NatsumeStatus> getStatus();
+  /// Who answers — name and whether it is the hub's companion (ADR-020 D2). Also the connection test.
+  Future<AssistantIdentity> getIdentity();
+
+  /// The companion's mood/energy/affinity — only asked when [AssistantIdentity.isCompanion].
+  Future<CompanionStatus> getStatus();
   Future<List<Alert>> getAlerts({
     int limit = 50,
     int offset = 0,

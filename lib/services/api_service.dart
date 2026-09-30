@@ -1,7 +1,8 @@
 import '../config/api_config.dart';
 import '../models/alert.dart';
+import '../models/assistant_identity.dart';
 import '../models/chat_message.dart';
-import '../models/natsume_status.dart';
+import '../models/companion_status.dart';
 import 'backend_client.dart';
 import 'http_transport.dart';
 
@@ -18,12 +19,16 @@ class ApiService extends BackendClient {
     final data = asObject(
       await _http.post('/api/mobile/chat', body: {'text': text}, timeout: HttpTransport.chatTimeout),
     );
-    return ChatMessage.fromJson({'role': 'natsume', ...data});
+    return ChatMessage.fromJson({'role': 'assistant', ...data});
   }
 
   @override
-  Future<NatsumeStatus> getStatus() async {
-    return NatsumeStatus.fromJson(asObject(await _http.get('/api/mobile/status')));
+  Future<AssistantIdentity> getIdentity() async =>
+      AssistantIdentity.fromJson(asObject(await _http.get('/api/mobile/identity')));
+
+  @override
+  Future<CompanionStatus> getStatus() async {
+    return CompanionStatus.fromJson(asObject(await _http.get('/api/mobile/status')));
   }
 
   // ── Alerts ────────────────────────────────────────────────────────────────

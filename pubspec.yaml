@@ -27,6 +27,7 @@ dependencies:
   # Cupertino icons
   cupertino_icons: ^1.0.8
   package_info_plus: ^10.2.1
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

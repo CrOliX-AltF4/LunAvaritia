@@ -13,6 +13,7 @@ import 'package:lunavaritia/screens/main_shell.dart';
 import 'package:lunavaritia/services/backend_client.dart';
 import 'package:lunavaritia/services/deep_link_router.dart';
 import 'package:lunavaritia/services/digest_gate.dart';
+import 'package:lunavaritia/services/update_checker.dart';
 
 class _FakeBackend implements BackendClient {
   _FakeBackend({this.digest = 'Overnight: 3 emails, 1 meeting.', this.digestError});
@@ -56,10 +57,24 @@ class _FakeBackend implements BackendClient {
   Future<void> registerPushToken(String token) async {}
 }
 
+/// Answers a fixed status — the real checker would ask GitHub.
+class _FakeUpdateChecker extends UpdateChecker {
+  _FakeUpdateChecker(this.status);
+  final UpdateStatus status;
+  int calls = 0;
+
+  @override
+  Future<UpdateStatus> check() async {
+    calls++;
+    return status;
+  }
+}
+
 Widget _buildShell(
   _FakeBackend backend, {
   required DigestGate digestGate,
   DeepLinkRouter? deepLinkRouter,
+  UpdateChecker? updateChecker,
 }) {
   return MultiProvider(
     providers: [
@@ -67,7 +82,11 @@ Widget _buildShell(
       ChangeNotifierProvider<AlertProvider>(create: (_) => AlertProvider(backend)),
     ],
     child: MaterialApp(
-      home: MainShell(digestGate: digestGate, deepLinkRouter: deepLinkRouter),
+      home: MainShell(
+        digestGate: digestGate,
+        deepLinkRouter: deepLinkRouter,
+        updateChecker: updateChecker ?? _FakeUpdateChecker(const UpToDate('1.3.1')),
+      ),
     ),
   );
 }
@@ -172,6 +191,56 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(selectedIndex(tester), AppTab.chat.index);
+    });
+  });
+
+  group('MainShell — update on launch (ADR-020 M1)', () {
+    const available = UpdateAvailable(AvailableUpdate(version: '1.4.0', downloadUrl: 'https://x/app.apk'));
+
+    testWidgets('offers a newer release once, with a download action', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final checker = _FakeUpdateChecker(available);
+      await tester.pumpWidget(_buildShell(
+        _FakeBackend(),
+        digestGate: const DigestGate(minGap: Duration(hours: 4)),
+        deepLinkRouter: DeepLinkRouter.instance..consume(),
+        updateChecker: checker,
+      ));
+      await tester.pump();
+      await tester.pump();
+
+      expect(checker.calls, 1);
+      expect(find.text('Version 1.4.0 disponible'), findsOneWidget);
+      expect(find.text('Télécharger'), findsOneWidget);
+      expect(await UpdateChecker.shouldNotify('1.4.0'), isFalse);
+    });
+
+    testWidgets('does not offer the same version again on the next launch', (tester) async {
+      SharedPreferences.setMockInitialValues({'update_notified_version': '1.4.0'});
+      await tester.pumpWidget(_buildShell(
+        _FakeBackend(),
+        digestGate: const DigestGate(minGap: Duration(hours: 4)),
+        deepLinkRouter: DeepLinkRouter.instance..consume(),
+        updateChecker: _FakeUpdateChecker(available),
+      ));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Version 1.4.0 disponible'), findsNothing);
+    });
+
+    testWidgets('says nothing when up to date or when GitHub cannot be reached', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      await tester.pumpWidget(_buildShell(
+        _FakeBackend(),
+        digestGate: const DigestGate(minGap: Duration(hours: 4)),
+        deepLinkRouter: DeepLinkRouter.instance..consume(),
+        updateChecker: _FakeUpdateChecker(const UpdateUnknown('GitHub injoignable')),
+      ));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(SnackBar), findsNothing);
     });
   });
 }

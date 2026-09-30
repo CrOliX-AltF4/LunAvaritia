@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../providers/alert_provider.dart';
 import '../services/deep_link_router.dart';
 import '../services/digest_gate.dart';
+import '../services/update_checker.dart';
+import '../services/update_launcher.dart';
 import 'chat_screen.dart';
 import 'alert_feed_screen.dart';
 import 'settings_screen.dart';
@@ -16,7 +18,9 @@ class MainShell extends StatefulWidget {
     super.key,
     this.digestGate = const DigestGate(),
     DeepLinkRouter? deepLinkRouter,
-  }) : deepLinkRouter = deepLinkRouter ?? DeepLinkRouter.instance;
+    UpdateChecker? updateChecker,
+  })  : deepLinkRouter = deepLinkRouter ?? DeepLinkRouter.instance,
+        updateChecker = updateChecker ?? UpdateChecker();
 
   /// Overridable for tests — a shorter minGap lets a widget test trigger the auto-digest
   /// without waiting on real time or faking SharedPreferences' stored timestamp by hand.
@@ -25,6 +29,9 @@ class MainShell extends StatefulWidget {
   /// Overridable for tests — DeepLinkRouter.instance is a process-wide singleton that
   /// would otherwise leak pending state between widget tests.
   final DeepLinkRouter deepLinkRouter;
+
+  /// Overridable for tests — the real one asks GitHub (ADR-020 M1).
+  final UpdateChecker updateChecker;
 
   @override
   State<MainShell> createState() => _MainShellState();
@@ -50,6 +57,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     // even exists — check for an already-pending request instead of only reacting to
     // the listener notification going forward.
     WidgetsBinding.instance.addPostFrameCallback((_) => _onDeepLinkRequested());
+    // Cold start only, never blocking: a new signed release is offered once per version (ADR-020 M1).
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeOfferUpdate());
   }
 
   @override
@@ -75,6 +84,23 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) _maybeShowDigest();
+  }
+
+  Future<void> _maybeOfferUpdate() async {
+    final status = await widget.updateChecker.check();
+    if (status is! UpdateAvailable) return;
+    final update = status.update;
+    if (!await UpdateChecker.shouldNotify(update.version)) return;
+    if (!mounted) return;
+    await UpdateChecker.markNotified(update.version);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Version ${update.version} disponible'),
+        duration: const Duration(seconds: 10),
+        action: SnackBarAction(label: 'Télécharger', onPressed: () => openUpdateDownload(context, update)),
+      ),
+    );
   }
 
   Future<void> _maybeShowDigest() async {

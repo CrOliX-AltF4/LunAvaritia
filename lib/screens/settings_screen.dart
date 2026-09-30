@@ -3,18 +3,25 @@ import '../config/api_config.dart';
 import '../models/assistant_identity.dart';
 import '../services/app_version.dart';
 import '../services/backend_client.dart';
+import '../services/update_checker.dart';
+import '../services/update_launcher.dart';
 
 /// Asks a server who answers — the connection test. Injectable so a widget test needs no network.
 typedef IdentityProbe = Future<AssistantIdentity> Function(ApiConfig config);
 
 Future<AssistantIdentity> _probeServer(ApiConfig config) => buildBackendClient(config).getIdentity();
 
+Future<UpdateStatus> _checkForUpdate() => UpdateChecker().check();
+
 /// LunAcedia first — it is the product (ADR-008). Wiring to a hub is an advanced, optional setting
 /// (ADR-020 D2, live check C20): no mode switch, and no assistant name written in the app.
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, this.probe = _probeServer});
+  const SettingsScreen({super.key, this.probe = _probeServer, this.checkUpdate = _checkForUpdate});
 
   final IdentityProbe probe;
+
+  /// Asks GitHub for a newer signed release (ADR-020 M1) — injectable for widget tests.
+  final Future<UpdateStatus> Function() checkUpdate;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -33,6 +40,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// Result of the last "Tester la connexion" — null until the first test.
   String? _testResult;
   bool _testOk = false;
+
+  bool _checkingUpdate = false;
+  UpdateStatus? _update;
 
   @override
   void initState() {
@@ -92,6 +102,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _testResult = 'Erreur inattendue : $e';
     }
     if (mounted) setState(() => _testing = false);
+  }
+
+  Future<void> _checkUpdate() async {
+    setState(() => _checkingUpdate = true);
+    final status = await widget.checkUpdate();
+    if (!mounted) return;
+    setState(() {
+      _update = status;
+      _checkingUpdate = false;
+    });
+  }
+
+  Widget _updateSection() {
+    final update = _update;
+    if (update is UpdateAvailable) {
+      return FilledButton.icon(
+        onPressed: () => openUpdateDownload(context, update.update),
+        icon: const Icon(Icons.download_outlined),
+        label: Text('Télécharger la version ${update.update.version}'),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        OutlinedButton.icon(
+          onPressed: _checkingUpdate ? null : _checkUpdate,
+          icon: _checkingUpdate
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.system_update_outlined),
+          label: const Text('Rechercher une mise à jour'),
+        ),
+        if (update != null) ...[
+          const SizedBox(height: 8),
+          Text(switch (update) {
+            UpToDate() => "L'application est à jour.",
+            UpdateUnknown(:final reason) => 'Impossible de vérifier : $reason.',
+            UpdateAvailable() => '',
+          }),
+        ],
+      ],
+    );
   }
 
   Future<void> _save() async {
@@ -237,6 +288,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               contentPadding: EdgeInsets.zero,
             ),
           ),
+          const SizedBox(height: 8),
+          _updateSection(),
         ],
       ),
     );

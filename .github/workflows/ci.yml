@@ -27,7 +27,7 @@ jobs:
             - name: Setup Flutter
               uses: subosito/flutter-action@v2
               with:
-                  flutter-version: "3.24.0"
+                  flutter-version: "3.38.5"
                   channel: stable
                   cache: true
 
@@ -72,5 +72,5 @@ jobs:
             - name: Test
               run: flutter test
 
-            - name: Build APK (debug)
-              run: flutter build apk --debug
+            - name: Build APK (release — R8 and resources shrinking checked before any tag; debug key, no secrets here)
+              run: flutter build apk --release

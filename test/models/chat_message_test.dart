@@ -17,9 +17,9 @@ void main() {
     });
 
     test('round-trips a natsume message', () {
-      final msg = ChatMessage(role: MessageRole.natsume, text: 'Yo.', ts: DateTime.now());
+      final msg = ChatMessage(role: MessageRole.assistant, text: 'Yo.', ts: DateTime.now());
       final restored = ChatMessage.fromLocalJson(msg.toLocalJson());
-      expect(restored.role, MessageRole.natsume);
+      expect(restored.role, MessageRole.assistant);
     });
 
     test('fromLocalJson falls back to now() on an unparseable timestamp', () {

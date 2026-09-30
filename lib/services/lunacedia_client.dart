@@ -1,7 +1,8 @@
 import '../config/api_config.dart';
 import '../models/alert.dart';
+import '../models/assistant_identity.dart';
 import '../models/chat_message.dart';
-import '../models/natsume_status.dart';
+import '../models/companion_status.dart';
 import 'backend_client.dart';
 import 'http_transport.dart';
 
@@ -34,15 +35,19 @@ class LunAcediaClient extends BackendClient {
       await _http.post('/api/chat', body: {'text': text}, timeout: HttpTransport.chatTimeout),
     );
     return ChatMessage(
-      role: MessageRole.natsume,
+      role: MessageRole.assistant,
       text: data['response'] as String? ?? '',
       ts: DateTime.now(),
     );
   }
 
+  @override
+  Future<AssistantIdentity> getIdentity() async =>
+      AssistantIdentity.fromJson(asObject(await _http.get('/api/identity')));
+
   // LunAcedia has no companion status concept
   @override
-  Future<NatsumeStatus> getStatus() async => NatsumeStatus.empty;
+  Future<CompanionStatus> getStatus() async => CompanionStatus.empty;
 
   // ── Events → Alerts ───────────────────────────────────────────────────────
 

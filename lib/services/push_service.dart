@@ -20,8 +20,8 @@ class PushService {
 
   static const _channel = AndroidNotificationChannel(
     'lunavaritia_alerts',
-    'Natsume Alerts',
-    description: 'Push notifications from the Natsume ecosystem',
+    'Notifications',
+    description: 'Alertes et messages de ton assistant',
     importance: Importance.high,
   );
 

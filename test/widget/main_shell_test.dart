@@ -4,8 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lunavaritia/models/alert.dart';
+import 'package:lunavaritia/models/assistant_identity.dart';
 import 'package:lunavaritia/models/chat_message.dart';
-import 'package:lunavaritia/models/natsume_status.dart';
+import 'package:lunavaritia/models/companion_status.dart';
 import 'package:lunavaritia/providers/alert_provider.dart';
 import 'package:lunavaritia/providers/chat_provider.dart';
 import 'package:lunavaritia/screens/main_shell.dart';
@@ -21,10 +22,13 @@ class _FakeBackend implements BackendClient {
 
   @override
   Future<ChatMessage> sendChat(String text) async =>
-      ChatMessage(role: MessageRole.natsume, text: 'pong', ts: DateTime.now());
+      ChatMessage(role: MessageRole.assistant, text: 'pong', ts: DateTime.now());
 
   @override
-  Future<NatsumeStatus> getStatus() async => NatsumeStatus.empty;
+  Future<CompanionStatus> getStatus() async => CompanionStatus.empty;
+
+  @override
+  Future<AssistantIdentity> getIdentity() async => AssistantIdentity.unknown;
 
   @override
   Future<List<Alert>> getAlerts({

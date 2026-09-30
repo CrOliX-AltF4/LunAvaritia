@@ -57,7 +57,8 @@ class _ChatScreenState extends State<ChatScreen> {
       backgroundColor: colors.surface,
       appBar: AppBar(
         backgroundColor: colors.surface,
-        title: const Text('Natsume', style: TextStyle(fontWeight: FontWeight.w600)),
+        // The server's own name for whoever answers (ADR-020 D2) — never a name written in the app.
+        title: Text(chat.identity.name, style: const TextStyle(fontWeight: FontWeight.w600)),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -65,10 +66,10 @@ class _ChatScreenState extends State<ChatScreen> {
             tooltip: 'Rafraîchir le statut',
           ),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
-          child: _StatusBar(chat: chat),
-        ),
+        // Mood/energy/affinity exist only for the hub's companion — never shown for LunAcedia's assistant.
+        bottom: chat.identity.isCompanion
+            ? PreferredSize(preferredSize: const Size.fromHeight(48), child: _StatusBar(chat: chat))
+            : null,
       ),
       body: Column(
         children: [
@@ -85,7 +86,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           Expanded(
             child: chat.messages.isEmpty
-                ? _EmptyState()
+                ? _EmptyState(name: chat.identity.name)
                 : ListView.builder(
                     controller: _scrollCtrl,
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -104,7 +105,13 @@ class _ChatScreenState extends State<ChatScreen> {
                     },
                   ),
           ),
-          _InputBar(controller: _input, focusNode: _focusNode, onSend: _send, sending: chat.sending),
+          _InputBar(
+            controller: _input,
+            focusNode: _focusNode,
+            onSend: _send,
+            sending: chat.sending,
+            name: chat.identity.name,
+          ),
         ],
       ),
     );
@@ -188,12 +195,14 @@ class _InputBar extends StatelessWidget {
     required this.focusNode,
     required this.onSend,
     required this.sending,
+    required this.name,
   });
 
   final TextEditingController controller;
   final FocusNode             focusNode;
   final VoidCallback          onSend;
   final bool                  sending;
+  final String                name;
 
   @override
   Widget build(BuildContext context) {
@@ -219,7 +228,7 @@ class _InputBar extends StatelessWidget {
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => onSend(),
                 decoration: InputDecoration(
-                  hintText: 'Message à Natsume…',
+                  hintText: 'Message à $name…',
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   filled: true,
                   fillColor: colors.surfaceContainerHigh,
@@ -259,6 +268,9 @@ class _InputBar extends StatelessWidget {
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.name});
+  final String name;
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -269,11 +281,14 @@ class _EmptyState extends StatelessWidget {
           CircleAvatar(
             radius: 36,
             backgroundColor: colors.primaryContainer,
-            child: Text('N', style: TextStyle(fontSize: 32, color: colors.onPrimaryContainer)),
+            child: Text(
+              name.isEmpty ? '?' : name.characters.first.toUpperCase(),
+              style: TextStyle(fontSize: 32, color: colors.onPrimaryContainer),
+            ),
           ),
           const SizedBox(height: 16),
           Text(
-            'Parle à Natsume',
+            'Écris à $name',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),

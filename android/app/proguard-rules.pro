@@ -1,6 +1,11 @@
 # Flutter
 -keep class io.flutter.** { *; }
 -keep class io.flutter.plugins.** { *; }
+# The embedding references Google Play's split-install classes for deferred components, which this app does not use
+# (no Play Store delivery): R8 must not fail on their absence (rules from its own missing_rules.txt).
+-dontwarn com.google.android.play.core.splitcompat.**
+-dontwarn com.google.android.play.core.splitinstall.**
+-dontwarn com.google.android.play.core.tasks.**
 
 # Firebase
 -keep class com.google.firebase.** { *; }

@@ -25,16 +25,18 @@ if (!hasReleaseKey) {
 android {
     namespace "com.crolix.lunavaritia"
     compileSdk flutter.compileSdkVersion
-    ndkVersion "25.1.8937393"
+    // Toolchain aligned on the Flutter 3.38 template (AGP 8.11, Kotlin 2.2, Java 17): androidx.core 1.17 and
+    // androidx.browser 1.9, pulled by the plugins, refuse an older Android Gradle plugin.
+    ndkVersion flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
         coreLibraryDesugaringEnabled true
     }
 
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {

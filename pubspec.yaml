@@ -1,6 +1,6 @@
 name: lunavaritia
 description: "Lun'Avaritia — mobile companion for the Lun ecosystem"
-version: 1.4.1+9
+version: 1.4.2+10
 publish_to: "none"
 
 environment:

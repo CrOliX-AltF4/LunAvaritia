@@ -106,7 +106,7 @@ jobs:
                   echo "Using $apksigner"
                   certs=$("$apksigner" verify --print-certs build/app/outputs/flutter-apk/app-release.apk)
                   echo "$certs"
-                  apk_sha=$(echo "$certs" | grep -i "certificate SHA-256 digest" | awk -F': ' '{print $2}' | tr -d ' :' | tr 'A-F' 'a-f' | sort -u)
+                  apk_sha=$(echo "$certs" | grep -i "certificate SHA-256 digest" | awk '{print $NF}' | tr 'A-F' 'a-f' | sort -u)
                   key_sha=$(keytool -list -v -keystore "$ANDROID_KEYSTORE_PATH" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" \
                     | grep -E '^\s*SHA256:' | head -1 | awk '{print $2}' | tr -d ':' | tr 'A-F' 'a-f')
                   if [ -z "$apk_sha" ] || [ -z "$key_sha" ]; then

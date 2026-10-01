@@ -3,10 +3,13 @@ import 'package:timeago/timeago.dart' as timeago;
 import '../models/alert.dart';
 
 class AlertCard extends StatelessWidget {
-  const AlertCard({super.key, required this.alert, required this.onMarkRead});
+  const AlertCard({super.key, required this.alert, required this.onMarkRead, this.onHandle});
 
   final Alert        alert;
   final VoidCallback onMarkRead;
+
+  /// "Traiter": opens a topic about this element of the box — only for an alert that is one (ADR-020 S4).
+  final VoidCallback? onHandle;
 
   static const _sourceIcon = {
     AlertSource.email:    Icons.email_outlined,
@@ -109,7 +112,9 @@ class AlertCard extends StatelessWidget {
                 ],
               ),
             ),
-            // Quick action
+            // Quick actions
+            if (onHandle != null)
+              TextButton(onPressed: onHandle, child: const Text('Traiter')),
             if (isUnread)
               IconButton(
                 icon: const Icon(Icons.mark_email_read_outlined, size: 18),

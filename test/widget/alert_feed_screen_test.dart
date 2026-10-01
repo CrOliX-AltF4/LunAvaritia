@@ -3,98 +3,82 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 import 'package:lunavaritia/models/alert.dart';
-import 'package:lunavaritia/models/assistant_identity.dart';
-import 'package:lunavaritia/models/chat_message.dart';
-import 'package:lunavaritia/models/companion_status.dart';
 import 'package:lunavaritia/providers/alert_provider.dart';
+import 'package:lunavaritia/providers/shell_controller.dart';
 import 'package:lunavaritia/screens/alert_feed_screen.dart';
-import 'package:lunavaritia/services/backend_client.dart';
 
-class _FakeBackend implements BackendClient {
-  final List<Alert> _alerts;
-  _FakeBackend({List<Alert>? alerts}) : _alerts = alerts ?? [];
+import '../support/fakes.dart';
 
-  @override
-  Future<ChatMessage> sendChat(String text) async =>
-      ChatMessage(role: MessageRole.assistant, text: 'pong', ts: DateTime.now());
+Alert _alert({String id = 'test-1', String title = 'PR merged', String? key}) => Alert(
+      id: id,
+      type: 'github',
+      source: AlertSource.github,
+      title: title,
+      priority: AlertPriority.normal,
+      ts: DateTime(2026, 6, 22),
+      read: false,
+      key: key,
+    );
 
-  @override
-  Future<CompanionStatus> getStatus() async => CompanionStatus.empty;
-
-  @override
-  Future<AssistantIdentity> getIdentity() async => AssistantIdentity.unknown;
-
-  @override
-  Future<List<Alert>> getAlerts({
-    int limit = 50,
-    int offset = 0,
-    bool? unread,
-    String? source,
-    String? priority,
-  }) async =>
-      _alerts;
-
-  @override
-  Future<void> markRead(String id) async {}
-
-  @override
-  Future<void> markAllRead() async {}
-
-  @override
-  Future<String> getDigest() async => 'digest';
-
-  @override
-  Future<void> registerPushToken(String token) async {}
-}
-
-Widget _buildScreen({List<Alert>? alerts}) {
-  return ChangeNotifierProvider<AlertProvider>(
-    create: (_) => AlertProvider(_FakeBackend(alerts: alerts)),
+Widget _buildScreen(ShellController shell, {List<Alert>? alerts}) {
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider.value(value: shell),
+      ChangeNotifierProvider<AlertProvider>(create: (_) => AlertProvider(FakeBackend(alerts: alerts, digest: 'digest'))),
+    ],
     child: const MaterialApp(home: AlertFeedScreen()),
   );
 }
 
 void main() {
-  group('AlertFeedScreen', () {
-    testWidgets('shows Alertes title in AppBar', (tester) async {
-      await tester.pumpWidget(_buildScreen());
+  group('AlertFeedScreen (the box until M4)', () {
+    testWidgets('is titled Boîte', (tester) async {
+      await tester.pumpWidget(_buildScreen(ShellController()));
       await tester.pumpAndSettle();
 
-      expect(find.text('Alertes'), findsOneWidget);
+      expect(find.text('Boîte'), findsOneWidget);
     });
 
     testWidgets('shows empty state when no alerts', (tester) async {
-      await tester.pumpWidget(_buildScreen());
+      await tester.pumpWidget(_buildScreen(ShellController()));
       await tester.pumpAndSettle();
 
       expect(find.text('Aucune alerte'), findsOneWidget);
     });
 
     testWidgets('shows alert title when alerts are present', (tester) async {
-      final alert = Alert(
-        id: 'test-1',
-        type: 'github',
-        source: AlertSource.github,
-        title: 'PR merged',
-        priority: AlertPriority.normal,
-        ts: DateTime(2026, 6, 22),
-        read: false,
-      );
-
-      await tester.pumpWidget(_buildScreen(alerts: [alert]));
+      await tester.pumpWidget(_buildScreen(ShellController(), alerts: [_alert()]));
       await tester.pumpAndSettle();
 
       expect(find.text('PR merged'), findsOneWidget);
     });
 
     testWidgets('tapping the digest button shows the digest sheet', (tester) async {
-      await tester.pumpWidget(_buildScreen());
+      await tester.pumpWidget(_buildScreen(ShellController()));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byIcon(Icons.auto_awesome_outlined));
       await tester.pumpAndSettle();
 
       expect(find.text('digest'), findsOneWidget);
+    });
+
+    testWidgets('"Traiter" opens a new topic about the element — only for an element of the box', (tester) async {
+      final shell = ShellController(initial: const BoxDestination());
+      await tester.pumpWidget(_buildScreen(shell, alerts: [
+        _alert(id: 'a1', title: 'Facture', key: 'email-42'),
+        _alert(id: 'a2', title: 'Système'),
+      ]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Traiter'), findsOneWidget);
+      await tester.tap(find.text('Traiter'));
+      await tester.pump();
+
+      final destination = shell.current;
+      expect(destination, isA<HomeDestination>());
+      expect((destination as HomeDestination).aboutKey, 'email-42');
+      expect(destination.aboutTitle, 'Facture');
     });
   });
 }

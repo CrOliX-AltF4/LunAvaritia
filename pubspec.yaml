@@ -14,7 +14,7 @@ dependencies:
   http: ^1.2.2
   # State management
   provider: ^6.1.2
-  # Local storage (server URL, backend mode, chat history — non-secret)
+  # Local storage (server URL, cached identity — non-secret)
   shared_preferences: ^2.3.0
   # Secure storage for the server bearer token
   flutter_secure_storage: ^10.3.4
@@ -36,3 +36,16 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # The DA's typefaces (ADR-020 D5, DA2) — variable fonts, SIL Open Font License (licences beside them).
+  assets:
+    - assets/fonts/CormorantGaramond-OFL.txt
+    - assets/fonts/Inter-OFL.txt
+  fonts:
+    - family: Cormorant Garamond
+      fonts:
+        - asset: assets/fonts/CormorantGaramond.ttf
+        - asset: assets/fonts/CormorantGaramond-Italic.ttf
+          style: italic
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter.ttf

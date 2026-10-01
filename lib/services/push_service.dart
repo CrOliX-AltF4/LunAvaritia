@@ -109,6 +109,6 @@ class PushService {
   /// notification, backgrounded app, cold start) — see DeepLinkRouter for why every push
   /// today routes to the same destination regardless of which backend sent it.
   void _routeToPayload(Map<String, dynamic> data) {
-    DeepLinkRouter.instance.requestTab(resolveDeepLinkTarget(data));
+    DeepLinkRouter.instance.request(resolveDeepLinkTarget(data));
   }
 }

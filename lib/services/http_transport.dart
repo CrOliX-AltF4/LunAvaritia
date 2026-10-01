@@ -39,6 +39,11 @@ class HttpTransport {
         timeout,
       );
 
+  Future<dynamic> patch(String path, {Object? body, Duration timeout = readTimeout}) => _send(
+        () => http.patch(_uri(path), headers: _config.headers, body: body == null ? null : jsonEncode(body)),
+        timeout,
+      );
+
   Future<dynamic> delete(String path, {Duration timeout = readTimeout}) =>
       _send(() => http.delete(_uri(path), headers: _config.headers), timeout);
 

@@ -1,10 +1,9 @@
 import '../config/api_config.dart';
 import '../models/alert.dart';
 import '../models/assistant_identity.dart';
-import '../models/chat_message.dart';
-import '../models/companion_status.dart';
 import 'backend_client.dart';
 import 'http_transport.dart';
+import 'topic_api.dart';
 
 /// Maps a raw LunAcedia event (GET /api/events) to the shared Alert model.
 /// Top-level and pure so it's testable without any HTTP plumbing (ADR-013 I4).
@@ -19,35 +18,24 @@ Alert eventToAlert(Map<String, dynamic> e) => Alert.fromJson({
       'read': e['read'] ?? false,
       'body': e['body'],
       'url': e['url'],
+      // The box item it is: what "Traiter" opens a topic about.
+      'sourceKey': e['dedupeKey'],
     });
 
 /// LunAcedia on its own (standalone mode).
 class LunAcediaClient extends BackendClient {
-  LunAcediaClient(ApiConfig config) : _http = HttpTransport(config);
+  LunAcediaClient(ApiConfig config) : this._(HttpTransport(config));
+
+  LunAcediaClient._(this._http) : topics = TopicApi.lunacedia(_http);
 
   final HttpTransport _http;
 
-  // ── Chat ──────────────────────────────────────────────────────────────────
-
   @override
-  Future<ChatMessage> sendChat(String text) async {
-    final data = asObject(
-      await _http.post('/api/chat', body: {'text': text}, timeout: HttpTransport.chatTimeout),
-    );
-    return ChatMessage(
-      role: MessageRole.assistant,
-      text: data['response'] as String? ?? '',
-      ts: DateTime.now(),
-    );
-  }
+  final TopicApi topics;
 
   @override
   Future<AssistantIdentity> getIdentity() async =>
       AssistantIdentity.fromJson(asObject(await _http.get('/api/identity')));
-
-  // LunAcedia has no companion status concept
-  @override
-  Future<CompanionStatus> getStatus() async => CompanionStatus.empty;
 
   // ── Events → Alerts ───────────────────────────────────────────────────────
 

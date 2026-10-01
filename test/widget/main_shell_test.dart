@@ -75,6 +75,7 @@ Widget _buildShell(
   required DigestGate digestGate,
   DeepLinkRouter? deepLinkRouter,
   UpdateChecker? updateChecker,
+  bool pairingNeeded = false,
 }) {
   return MultiProvider(
     providers: [
@@ -86,6 +87,7 @@ Widget _buildShell(
         digestGate: digestGate,
         deepLinkRouter: deepLinkRouter,
         updateChecker: updateChecker ?? _FakeUpdateChecker(const UpToDate('1.3.1')),
+        pairingNeeded: pairingNeeded,
       ),
     ),
   );
@@ -191,6 +193,29 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(selectedIndex(tester), AppTab.chat.index);
+    });
+  });
+
+  group('MainShell — pairing banner (ADR-020 M3)', () {
+    const gate = DigestGate(minGap: Duration(hours: 4));
+
+    testWidgets('says the phone is not paired and leads to the settings', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      await tester.pumpWidget(_buildShell(_FakeBackend(digest: ''), digestGate: gate, pairingNeeded: true));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MaterialBanner), findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, 'Paramètres'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex, AppTab.settings.index);
+      expect(find.byType(MaterialBanner), findsNothing);
+    });
+
+    testWidgets('says nothing when the phone is paired', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      await tester.pumpWidget(_buildShell(_FakeBackend(digest: ''), digestGate: gate));
+      await tester.pumpAndSettle();
+      expect(find.byType(MaterialBanner), findsNothing);
     });
   });
 

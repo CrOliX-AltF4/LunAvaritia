@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/alert_provider.dart';
+import '../providers/shell_controller.dart';
+import '../services/backend_error.dart';
 import '../widgets/alert_card.dart';
+import '../widgets/shell_widgets.dart';
 
 class AlertFeedScreen extends StatefulWidget {
   const AlertFeedScreen({super.key});
@@ -32,15 +35,10 @@ class _AlertFeedScreenState extends State<AlertFeedScreen> {
       // sheet is dismissed, not when it opens. Awaiting it here would leave _digestLoading
       // (and its AppBar spinner) stuck for as long as the sheet stays open.
       unawaited(showDigestSheet(context, digest));
-    } on UnimplementedError {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Digest non disponible en mode Natsume')),
-      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur : $e')),
+        SnackBar(content: Text(e is BackendError ? e.message : 'Erreur inattendue : $e')),
       );
     } finally {
       if (mounted) setState(() => _digestLoading = false);
@@ -56,9 +54,11 @@ class _AlertFeedScreenState extends State<AlertFeedScreen> {
       backgroundColor: colors.surface,
       appBar: AppBar(
         backgroundColor: colors.surface,
+        leading: const MenuButton(),
+        titleSpacing: 0,
         title: Row(
           children: [
-            const Text('Alertes', style: TextStyle(fontWeight: FontWeight.w600)),
+            Text('Boîte', style: Theme.of(context).textTheme.titleLarge),
             if (provider.unreadCount > 0) ...[
               const SizedBox(width: 8),
               Badge(label: Text('${provider.unreadCount}')),
@@ -274,7 +274,15 @@ class _Body extends StatelessWidget {
               child: const Icon(Icons.mark_email_read_outlined),
             ),
             onDismissed: (_) => provider.markRead(alert.id),
-            child: AlertCard(alert: alert, onMarkRead: () => provider.markRead(alert.id)),
+            child: AlertCard(
+              alert: alert,
+              onMarkRead: () => provider.markRead(alert.id),
+              onHandle: alert.key == null
+                  ? null
+                  : () => context
+                      .read<ShellController>()
+                      .go(HomeDestination(aboutKey: alert.key, aboutTitle: alert.title)),
+            ),
           );
         },
       ),

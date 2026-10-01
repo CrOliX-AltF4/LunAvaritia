@@ -9,48 +9,40 @@ void main() {
       expect(router.pending, isNull);
     });
 
-    test('requestTab sets pending and notifies listeners', () {
+    test('request sets pending and notifies listeners', () {
       final router = DeepLinkRouter.instance;
       var notified = false;
       router.addListener(() => notified = true);
 
-      router.requestTab(AppTab.alerts);
+      router.request(DeepLinkTarget.box);
 
-      expect(router.pending, AppTab.alerts);
+      expect(router.pending, DeepLinkTarget.box);
       expect(notified, isTrue);
       router.consume();
     });
 
     test('consume clears pending', () {
       final router = DeepLinkRouter.instance;
-      router.requestTab(AppTab.chat);
+      router.request(DeepLinkTarget.box);
       router.consume();
       expect(router.pending, isNull);
     });
   });
 
   group('resolveDeepLinkTarget', () {
-    test('routes a Natsume-shaped payload (alertId/source) to alerts', () {
+    test("routes the hub's payload (alertId/source/key) to the box", () {
+      expect(resolveDeepLinkTarget({'alertId': 'a1', 'source': 'email', 'key': 'email-1'}), DeepLinkTarget.box);
+    });
+
+    test("routes LunAcedia's payload (type/source/dedupeKey/priority) to the box", () {
       expect(
-        resolveDeepLinkTarget({'alertId': 'a1', 'source': 'email'}),
-        AppTab.alerts,
+        resolveDeepLinkTarget({'type': 'email.new', 'source': 'gmail', 'dedupeKey': 'gmail-123', 'priority': 'urgent'}),
+        DeepLinkTarget.box,
       );
     });
 
-    test('routes a LunAcedia-shaped payload (type/source/dedupeKey/priority) to alerts', () {
-      expect(
-        resolveDeepLinkTarget({
-          'type': 'email.new',
-          'source': 'gmail',
-          'dedupeKey': 'gmail-123',
-          'priority': 'urgent',
-        }),
-        AppTab.alerts,
-      );
-    });
-
-    test('routes an empty/unknown payload to alerts too (only destination today)', () {
-      expect(resolveDeepLinkTarget({}), AppTab.alerts);
+    test('routes an empty/unknown payload to the box too (only destination today)', () {
+      expect(resolveDeepLinkTarget({}), DeepLinkTarget.box);
     });
   });
 }

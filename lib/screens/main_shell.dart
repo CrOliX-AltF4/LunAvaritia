@@ -2,21 +2,38 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../providers/alert_provider.dart';
+import '../providers/identity_provider.dart';
+import '../providers/shell_controller.dart';
+import '../providers/topic_controller.dart';
+import '../providers/topics_provider.dart';
+import '../services/backend_client.dart';
 import '../services/deep_link_router.dart';
 import '../services/digest_gate.dart';
-import 'chat_screen.dart';
+import '../services/update_checker.dart';
+import '../services/update_launcher.dart';
+import '../widgets/app_drawer.dart';
 import 'alert_feed_screen.dart';
+import 'archived_screen.dart';
+import 'home_screen.dart';
 import 'settings_screen.dart';
+import 'topic_screen.dart';
 
+/// One screen at a time and a drawer for the rest (DA1 « sujet + tiroir », ADR-020 §5.3) — no tabs.
 class MainShell extends StatefulWidget {
   // Not const — deepLinkRouter's default falls back to DeepLinkRouter.instance, a runtime
   // singleton, which can't appear in a const constructor's initializer list.
   MainShell({
     super.key,
     this.digestGate = const DigestGate(),
+    this.pairingNeeded = false,
+    this.wired = false,
     DeepLinkRouter? deepLinkRouter,
-  }) : deepLinkRouter = deepLinkRouter ?? DeepLinkRouter.instance;
+    UpdateChecker? updateChecker,
+    this.settings,
+  })  : deepLinkRouter = deepLinkRouter ?? DeepLinkRouter.instance,
+        updateChecker = updateChecker ?? UpdateChecker();
 
   /// Overridable for tests — a shorter minGap lets a widget test trigger the auto-digest
   /// without waiting on real time or faking SharedPreferences' stored timestamp by hand.
@@ -26,23 +43,34 @@ class MainShell extends StatefulWidget {
   /// would otherwise leak pending state between widget tests.
   final DeepLinkRouter deepLinkRouter;
 
+  /// Overridable for tests — the real one asks GitHub (ADR-020 M1).
+  final UpdateChecker updateChecker;
+
+  /// This phone is not paired with the server it talks to, or still holds an old shared secret (ADR-020 M3).
+  final bool pairingNeeded;
+
+  /// Wired to the hub — said in the drawer.
+  final bool wired;
+
+  /// Overridable for tests — the real settings screen probes the server.
+  final Widget? settings;
+
   @override
   State<MainShell> createState() => _MainShellState();
 }
 
 class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
-  int _index = 0;
-
-  static const _screens = [
-    ChatScreen(),
-    AlertFeedScreen(),
-    SettingsScreen(),
-  ];
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // What the drawer and the home screen show: who answers, the topics, the box's counts.
+      unawaited(context.read<IdentityProvider>().refresh());
+      unawaited(context.read<TopicsProvider>().refresh());
+      unawaited(context.read<AlertProvider>().load());
+    });
     // Cold start counts as "waking" the app too, not just a foreground resume.
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowDigest());
     widget.deepLinkRouter.addListener(_onDeepLinkRequested);
@@ -50,6 +78,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     // even exists — check for an already-pending request instead of only reacting to
     // the listener notification going forward.
     WidgetsBinding.instance.addPostFrameCallback((_) => _onDeepLinkRequested());
+    // Cold start only, never blocking: a new signed release is offered once per version (ADR-020 M1).
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeOfferUpdate());
   }
 
   @override
@@ -60,21 +90,37 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   }
 
   void _onDeepLinkRequested() {
-    final tab = widget.deepLinkRouter.pending;
-    if (tab == null) return;
+    final target = widget.deepLinkRouter.pending;
+    if (target == null || !mounted) return;
     widget.deepLinkRouter.consume();
-    setState(() => _index = tab.index);
-    if (tab == AppTab.alerts) {
-      // The tapped notification is presumably the freshest thing there is — IndexedStack
-      // keeps AlertFeedScreen alive since first build, so its own initState-triggered
-      // load already ran once and won't naturally pick this up on its own.
-      context.read<AlertProvider>().refresh();
+    switch (target) {
+      case DeepLinkTarget.box:
+        context.read<ShellController>().go(const BoxDestination());
+        // The tapped notification is presumably the freshest thing there is.
+        unawaited(context.read<AlertProvider>().refresh());
     }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) _maybeShowDigest();
+  }
+
+  Future<void> _maybeOfferUpdate() async {
+    final status = await widget.updateChecker.check();
+    if (status is! UpdateAvailable) return;
+    final update = status.update;
+    if (!await UpdateChecker.shouldNotify(update.version)) return;
+    if (!mounted) return;
+    await UpdateChecker.markNotified(update.version);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Version ${update.version} disponible'),
+        duration: const Duration(seconds: 10),
+        action: SnackBarAction(label: 'Télécharger', onPressed: () => openUpdateDownload(context, update)),
+      ),
+    );
   }
 
   Future<void> _maybeShowDigest() async {
@@ -96,40 +142,68 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     }
   }
 
+  Widget _screenFor(Destination destination) => switch (destination) {
+        HomeDestination(:final aboutKey, :final aboutTitle) =>
+          HomeScreen(key: ValueKey('home-$aboutKey'), aboutKey: aboutKey, aboutTitle: aboutTitle),
+        TopicDestination(:final id) => ChangeNotifierProvider(
+            key: ValueKey('topic-$id'),
+            create: (context) {
+              final topics = context.read<TopicsProvider>();
+              final opened = topics.lastOpened?.topic.id == id ? topics.lastOpened : null;
+              // The first answer is shown as it came — not asked for again.
+              if (opened != null) topics.lastOpened = null;
+              return TopicController(context.read<BackendClient>(), id, opened: opened);
+            },
+            child: const TopicScreen(),
+          ),
+        BoxDestination() => const AlertFeedScreen(),
+        ArchivedDestination() => const ArchivedScreen(),
+        SettingsDestination() => widget.settings ?? const SettingsScreen(),
+      };
+
   @override
   Widget build(BuildContext context) {
-    final unread = context.select<AlertProvider, int>((p) => p.unreadCount);
+    final shell = context.watch<ShellController>();
+    final destination = shell.current;
+    final showPairingBanner = widget.pairingNeeded && destination is! SettingsDestination;
 
-    return Scaffold(
-      body: IndexedStack(index: _index, children: _screens),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: [
-          const NavigationDestination(
-            icon:         Icon(Icons.chat_bubble_outline),
-            selectedIcon: Icon(Icons.chat_bubble),
-            label:        'Chat',
-          ),
-          NavigationDestination(
-            icon: Badge(
-              isLabelVisible: unread > 0,
-              label: Text('$unread'),
-              child: const Icon(Icons.notifications_outlined),
+    return PopScope(
+      // Back leads home first; from home, it leaves the app.
+      canPop: destination is HomeDestination,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) shell.go(const HomeDestination());
+      },
+      child: Scaffold(
+        key: shell.scaffoldKey,
+        drawer: AppDrawer(wired: widget.wired, paired: !widget.pairingNeeded),
+        body: Column(
+          children: [
+            // The banner takes the status bar's place; the screen below then must not leave room for it again.
+            if (showPairingBanner)
+              SafeArea(
+                bottom: false,
+                child: MaterialBanner(
+                  leading: const Icon(Icons.link_off),
+                  content: const Text(
+                    "Cet appareil n'est pas appairé avec son serveur, ou garde un ancien secret. Appairez-le dans les réglages.",
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => shell.go(const SettingsDestination()),
+                      child: const Text('Réglages'),
+                    ),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: MediaQuery.removePadding(
+                context: context,
+                removeTop: showPairingBanner,
+                child: _screenFor(destination),
+              ),
             ),
-            selectedIcon: Badge(
-              isLabelVisible: unread > 0,
-              label: Text('$unread'),
-              child: const Icon(Icons.notifications),
-            ),
-            label: 'Alertes',
-          ),
-          const NavigationDestination(
-            icon:         Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label:        'Paramètres',
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

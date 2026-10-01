@@ -1,4 +1,8 @@
-name: Create Release
+name: Release
+
+# One workflow per tag (ADR-020 M1): test, build the signed release APK, check its signature, publish it.
+# It replaces release.yml + build-apk.yml, which ran side by side on the same tag and shipped a debug APK
+# signed with a key regenerated on every run — no update could install over the previous one (live check C19).
 
 on:
     push:
@@ -10,10 +14,35 @@ permissions:
 
 jobs:
     release:
-        name: Validate & Create GitHub Release
+        name: Test, build & publish the signed APK
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
+
+            - name: Check release secrets
+              # A release without the real key (or without Firebase) must not ship — refuse instead of falling back.
+              env:
+                  ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+                  ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+                  ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+                  GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+              run: |
+                  missing=""
+                  for name in ANDROID_KEYSTORE_B64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS GOOGLE_SERVICES_JSON_B64; do
+                    if [ -z "${!name}" ]; then missing="$missing $name"; fi
+                  done
+                  if [ -n "$missing" ]; then
+                    echo "::error::Missing release secrets:$missing"
+                    exit 1
+                  fi
+
+            - name: Check the tag matches pubspec.yaml
+              run: |
+                  version=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
+                  if [ "v$version" != "${{ github.ref_name }}" ]; then
+                    echo "::error::Tag ${{ github.ref_name }} does not match pubspec.yaml version $version"
+                    exit 1
+                  fi
 
             - name: Setup Java
               uses: actions/setup-java@v4
@@ -24,17 +53,61 @@ jobs:
             - name: Setup Flutter
               uses: subosito/flutter-action@v2
               with:
-                  flutter-version: "3.24.0"
+                  flutter-version: "3.38.5"
                   channel: stable
                   cache: true
+
+            - name: Create android/local.properties
+              run: |
+                  echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
+                  echo "flutter.sdk=$FLUTTER_ROOT" >> android/local.properties
+
+            - name: Inject google-services.json
+              env:
+                  GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+              run: echo "$GOOGLE_SERVICES_JSON_B64" | base64 -d > android/app/google-services.json
+
+            - name: Decode the keystore
+              env:
+                  ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+              run: |
+                  echo "$ANDROID_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+                  echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
 
             - name: Install dependencies
               run: flutter pub get
 
-            - name: Run tests
+            - name: Analyze
+              run: flutter analyze
+
+            - name: Test
               run: flutter test
 
-            - name: Create release
+            - name: Build APK (release, signed)
+              env:
+                  ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+                  ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+              run: flutter build apk --release
+
+            - name: Check the APK is signed with the release key
+              run: |
+                  apksigner=$(ls "$ANDROID_SDK_ROOT"/build-tools/*/apksigner | sort -V | tail -1)
+                  certs=$("$apksigner" verify --print-certs build/app/outputs/flutter-apk/app-release.apk)
+                  echo "$certs" | grep -E "Signer #1 certificate (DN|SHA-256)"
+                  if echo "$certs" | grep -q "CN=Android Debug"; then
+                    echo "::error::The APK is signed with the debug key"
+                    exit 1
+                  fi
+
+            - name: Rename APK
+              run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/lunavaritia-${{ github.ref_name }}.apk
+
+            - name: Publish the release
               uses: softprops/action-gh-release@v2
               with:
                   generate_release_notes: true
+                  files: build/app/outputs/flutter-apk/lunavaritia-${{ github.ref_name }}.apk
+
+            - name: Remove the keystore
+              if: always()
+              run: rm -f "$RUNNER_TEMP/release.jks"

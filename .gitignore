@@ -7,6 +7,8 @@
 .pub/
 build/
 *.lock
+# An app pins its dependencies: the release CI builds exactly what was tested.
+!pubspec.lock
 doc/api/
 
 # Android
@@ -20,6 +22,10 @@ android/app/debug/
 android/app/profile/
 android/app/release/
 android/app/google-services.json
+android/key.properties
+*.jks
+*.keystore
+android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
 
 # IntelliJ / AS
 *.iml

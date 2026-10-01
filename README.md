@@ -71,11 +71,27 @@ BackendClient (abstract)
 
 ## Release
 
-Each release publishes a **debug APK** as a GitHub Release asset (CI-built, no signing config required for sideloading).
+Each version tag publishes a **signed release APK** (`lunavaritia-vX.Y.Z.apk`) as a GitHub Release asset. Every
+release is signed with the same key, so an update installs over the previous version and keeps its settings.
 
-To install: download `app-debug.apk` from [Releases](https://github.com/CrOliX-AltF4/LunAvaritia/releases), enable "install from unknown sources" on your device, install via file manager or `adb install`.
+To install: download the APK from [Releases](https://github.com/CrOliX-AltF4/LunAvaritia/releases), allow installs
+from your browser or file manager, then open it. The app checks GitHub for a newer release at launch and from
+**Paramètres → À propos**.
 
-> **Secret required** — add `GOOGLE_SERVICES_JSON_B64` to repository secrets (base64-encoded `google-services.json`) for the APK build workflow.
+> **Upgrading from 1.3.x or earlier** — those APKs were signed with a throwaway debug key. Uninstall once, then
+> install the signed release; later updates install in place.
+
+**Repository secrets** used by `.github/workflows/release.yml` (the workflow refuses to publish without them):
+
+| Secret | Content |
+|---|---|
+| `ANDROID_KEYSTORE_B64` | The release keystore (PKCS12), base64-encoded |
+| `ANDROID_KEYSTORE_PASSWORD` | Its password (also the key's password) |
+| `ANDROID_KEY_ALIAS` | The key alias |
+| `GOOGLE_SERVICES_JSON_B64` | `google-services.json`, base64-encoded (push notifications) |
+
+A local release build reads `android/key.properties` (gitignored: `storeFile`, `storePassword`, `keyAlias`);
+without it, it is signed with the debug key and Gradle says so.
 
 ---
 

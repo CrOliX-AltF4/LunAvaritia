@@ -1,54 +1,24 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/alert.dart';
-import '../models/chat_message.dart';
-import '../models/natsume_status.dart';
+import '../models/assistant_identity.dart';
 import 'backend_client.dart';
+import 'http_transport.dart';
+import 'topic_api.dart';
 
-export 'backend_client.dart' show ApiException;
-
+/// The hub (Natsume Core) — its mobile façade under /api/mobile/*.
 class ApiService extends BackendClient {
-  ApiService(this._config);
+  ApiService(ApiConfig config) : this._(HttpTransport(config));
 
-  final ApiConfig _config;
+  ApiService._(this._http) : topics = TopicApi.hub(_http);
 
-  Uri _uri(String path) => Uri.parse('${_config.baseUrl}$path');
-
-  Future<Map<String, dynamic>> _get(String path) async {
-    final resp = await http.get(_uri(path), headers: _config.headers);
-    if (resp.statusCode >= 400) {
-      throw ApiException(resp.statusCode, resp.body);
-    }
-    return jsonDecode(resp.body) as Map<String, dynamic>;
-  }
-
-  Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body) async {
-    final resp = await http.post(
-      _uri(path),
-      headers: _config.headers,
-      body: jsonEncode(body),
-    );
-    if (resp.statusCode >= 400) {
-      throw ApiException(resp.statusCode, resp.body);
-    }
-    if (resp.body.isEmpty || resp.statusCode == 204) return {};
-    return jsonDecode(resp.body) as Map<String, dynamic>;
-  }
-
-  // ── Chat ──────────────────────────────────────────────────────────────────
+  final HttpTransport _http;
 
   @override
-  Future<ChatMessage> sendChat(String text) async {
-    final data = await _post('/api/mobile/chat', {'text': text});
-    return ChatMessage.fromJson({'role': 'natsume', ...data});
-  }
+  final TopicApi topics;
 
   @override
-  Future<NatsumeStatus> getStatus() async {
-    final data = await _get('/api/mobile/status');
-    return NatsumeStatus.fromJson(data);
-  }
+  Future<AssistantIdentity> getIdentity() async =>
+      AssistantIdentity.fromJson(asObject(await _http.get('/api/mobile/identity')));
 
   // ── Alerts ────────────────────────────────────────────────────────────────
 
@@ -62,30 +32,27 @@ class ApiService extends BackendClient {
   }) async {
     final q = StringBuffer('/api/mobile/alerts?limit=$limit&offset=$offset');
     if (unread == true) q.write('&unread=true');
-    // source and priority filters not supported by Natsume API — ignored
-    final data = await _get(q.toString());
+    // source and priority filters not supported by the hub's mobile API — ignored
+    final data = asObject(await _http.get(q.toString()));
     final items = data['alerts'] as List<dynamic>? ?? [];
-    return items
-        .cast<Map<String, dynamic>>()
-        .map(Alert.fromJson)
-        .toList();
+    return items.cast<Map<String, dynamic>>().map(Alert.fromJson).toList();
   }
 
   @override
   Future<void> markRead(String id) async {
-    await _post('/api/mobile/alerts/$id/read', {});
+    await _http.post('/api/mobile/alerts/${Uri.encodeComponent(id)}/read', body: const {});
   }
 
   @override
   Future<void> markAllRead() async {
-    await _post('/api/mobile/alerts/read-all', {});
+    await _http.post('/api/mobile/alerts/read-all', body: const {});
   }
 
   @override
   Future<String> getDigest() async {
     // /api/mobile/digest, not /api/proxy/acedia/digest — the latter isn't under /api/mobile/*,
     // so a MOBILE_API_KEY-only caller (no panel session) got a silent 401 on it (ADR-013 I4).
-    final data = await _get('/api/mobile/digest');
+    final data = asObject(await _http.get('/api/mobile/digest', timeout: HttpTransport.chatTimeout));
     return data['response'] as String? ?? '';
   }
 
@@ -93,6 +60,6 @@ class ApiService extends BackendClient {
 
   @override
   Future<void> registerPushToken(String token) async {
-    await _post('/api/mobile/push-token', {'token': token});
+    await _http.post('/api/mobile/push-token', body: {'token': token});
   }
 }

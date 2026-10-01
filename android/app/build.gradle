@@ -5,19 +5,38 @@ plugins {
     id "com.google.gms.google-services"
 }
 
+// Release signing (ADR-020 M1, live check C19). CI passes the keystore through environment variables (secrets
+// ANDROID_KEYSTORE_B64 / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS); a local build reads android/key.properties
+// (gitignored: storeFile, storePassword, keyAlias). PKCS12 keystore: the key password is the store password.
+// Without either, a release build is signed with the debug key and says so — release.yml refuses to publish that.
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withReader("UTF-8") { keystoreProperties.load(it) }
+}
+def releaseStoreFile = System.getenv("ANDROID_KEYSTORE_PATH") ?: keystoreProperties["storeFile"]
+def releaseStorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: keystoreProperties["storePassword"]
+def releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS") ?: keystoreProperties["keyAlias"]
+def hasReleaseKey = releaseStoreFile && releaseStorePassword && releaseKeyAlias
+if (!hasReleaseKey) {
+    logger.warn("LunAvaritia: no release keystore configured — a release build will be signed with the debug key")
+}
+
 android {
     namespace "com.crolix.lunavaritia"
     compileSdk flutter.compileSdkVersion
-    ndkVersion "25.1.8937393"
+    // Toolchain aligned on the Flutter 3.38 template (AGP 8.11, Kotlin 2.2, Java 17): androidx.core 1.17 and
+    // androidx.browser 1.9, pulled by the plugins, refuse an older Android Gradle plugin.
+    ndkVersion flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
         coreLibraryDesugaringEnabled true
     }
 
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {
@@ -28,9 +47,20 @@ android {
         versionName flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseKey) {
+            release {
+                storeFile file(releaseStoreFile)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseStorePassword
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig signingConfigs.debug
+            signingConfig hasReleaseKey ? signingConfigs.release : signingConfigs.debug
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"

@@ -4,6 +4,7 @@ import '../models/assistant_identity.dart';
 import '../services/app_version.dart';
 import '../services/backend_client.dart';
 import '../services/pairing.dart';
+import '../widgets/shell_widgets.dart';
 import '../services/update_checker.dart';
 import '../services/update_launcher.dart';
 
@@ -238,7 +239,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       backgroundColor: colors.surface,
       appBar: AppBar(
         backgroundColor: colors.surface,
-        title: const Text('Paramètres', style: TextStyle(fontWeight: FontWeight.w600)),
+        leading: const MenuButton(),
+        titleSpacing: 0,
+        title: Text('Réglages', style: Theme.of(context).textTheme.titleLarge),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),

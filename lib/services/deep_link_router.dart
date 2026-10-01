@@ -1,27 +1,23 @@
 import 'package:flutter/foundation.dart';
 
-/// Mirrors MainShell's tab order — kept here so PushService doesn't need to import
-/// screen-layer code just to know "alerts is tab 1".
-enum AppTab { chat, alerts, settings }
+/// Where a tapped notification leads. Every push both servers send today announces an element of the box (a mail,
+/// an event, a GitHub notification), so it opens the box; "Traiter" there opens a topic about it (ADR-020 S4).
+enum DeepLinkTarget { box }
 
-/// Global, minimal cross-cutting channel for "switch to this tab" requests that originate
-/// outside the widget tree — a tapped push notification, today the only source. MainShell
-/// listens; whoever decided a tab switch is needed (PushService) writes.
+/// Global, minimal channel for "go there" requests that originate outside the widget tree — a tapped push
+/// notification, today the only source. MainShell listens; PushService writes.
 ///
-/// Deliberately not a full routing/GoRouter setup: this app has exactly 3 flat tabs, no
-/// nested/stacked routes worth addressing individually (LunAvaritia gap #3 — tapping a push
-/// notification used to do nothing at all: no onMessageOpenedApp/getInitialMessage handler
-/// existed, so the app just opened to whatever tab it last had, notification content
-/// unreachable).
+/// Deliberately not a full routing setup: the app has one screen at a time and a drawer (DA1), nothing stacked worth
+/// addressing individually.
 class DeepLinkRouter extends ChangeNotifier {
   DeepLinkRouter._();
   static final instance = DeepLinkRouter._();
 
-  AppTab? _pending;
-  AppTab? get pending => _pending;
+  DeepLinkTarget? _pending;
+  DeepLinkTarget? get pending => _pending;
 
-  void requestTab(AppTab tab) {
-    _pending = tab;
+  void request(DeepLinkTarget target) {
+    _pending = target;
     notifyListeners();
   }
 
@@ -31,10 +27,6 @@ class DeepLinkRouter extends ChangeNotifier {
   }
 }
 
-/// Both backends' FcmSender (LunAcedia's and Natsume's) only ever push alert-shaped content
-/// today (email/calendar/github/system notifications) — there is no other kind of push in
-/// this app, so every tap routes to the same place regardless of backendMode's differing
-/// payload shape (`alertId`+`source` vs `type`+`source`+`dedupeKey`+`priority`). Kept as its
-/// own function rather than inlined so the "there's only one destination today" fact is a
-/// single, greppable place to revisit if that ever changes.
-AppTab resolveDeepLinkTarget(Map<String, dynamic> data) => AppTab.alerts;
+/// Both servers' pushes are box elements: LunAcedia sends `dedupeKey`, the hub `alertId` (+ `key` when the alert is
+/// about a box item). Kept as its own function so "there is only one destination today" is one greppable place.
+DeepLinkTarget resolveDeepLinkTarget(Map<String, dynamic> data) => DeepLinkTarget.box;

@@ -30,6 +30,9 @@ class AlertProvider extends ChangeNotifier {
 
   int get unreadCount => _alerts.where((a) => !a.read).length;
 
+  /// Unread, whatever the filter — what the drawer and the home screen count.
+  List<Alert> get unreadAlerts => _alerts.where((a) => !a.read).toList();
+
   Future<void> load() async {
     loading = true;
     error = null;

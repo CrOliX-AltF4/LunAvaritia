@@ -13,6 +13,7 @@ class Alert {
     required this.read,
     this.body,
     this.url,
+    this.key,
   });
 
   final String id;
@@ -25,6 +26,9 @@ class Alert {
   final String? body;
   final String? url;
 
+  /// The box item this alert is about — what "Traiter" opens a topic on. Absent for the hub's own alerts.
+  final String? key;
+
   factory Alert.fromJson(Map<String, dynamic> json) {
     return Alert(
       id:       json['id'] as String,
@@ -36,13 +40,14 @@ class Alert {
       read:     json['read'] as bool? ?? false,
       body:     json['body'] as String?,
       url:      json['url'] as String?,
+      key:      json['sourceKey'] as String?,
     );
   }
 
   Alert copyWith({bool? read}) => Alert(
     id: id, type: type, source: source, title: title,
     priority: priority, ts: ts, read: read ?? this.read,
-    body: body, url: url,
+    body: body, url: url, key: key,
   );
 
   static AlertSource _parseSource(String type) {

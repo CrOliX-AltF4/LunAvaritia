@@ -17,6 +17,7 @@ class MainShell extends StatefulWidget {
   MainShell({
     super.key,
     this.digestGate = const DigestGate(),
+    this.pairingNeeded = false,
     DeepLinkRouter? deepLinkRouter,
     UpdateChecker? updateChecker,
   })  : deepLinkRouter = deepLinkRouter ?? DeepLinkRouter.instance,
@@ -32,6 +33,9 @@ class MainShell extends StatefulWidget {
 
   /// Overridable for tests — the real one asks GitHub (ADR-020 M1).
   final UpdateChecker updateChecker;
+
+  /// This phone is not paired with the server it talks to, or still holds an old shared secret (ADR-020 M3).
+  final bool pairingNeeded;
 
   @override
   State<MainShell> createState() => _MainShellState();
@@ -125,9 +129,37 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final unread = context.select<AlertProvider, int>((p) => p.unreadCount);
+    final showPairingBanner = widget.pairingNeeded && _index != AppTab.settings.index;
 
     return Scaffold(
-      body: IndexedStack(index: _index, children: _screens),
+      body: Column(
+        children: [
+          // The banner takes the status bar's place; the screen below then must not leave room for it again.
+          if (showPairingBanner)
+            SafeArea(
+              bottom: false,
+              child: MaterialBanner(
+                leading: const Icon(Icons.link_off),
+                content: const Text(
+                  "Cet appareil n'est pas appairé avec son serveur, ou garde un ancien secret. Appairez-le dans les paramètres.",
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => setState(() => _index = AppTab.settings.index),
+                    child: const Text('Paramètres'),
+                  ),
+                ],
+              ),
+            ),
+          Expanded(
+            child: MediaQuery.removePadding(
+              context: context,
+              removeTop: showPairingBanner,
+              child: IndexedStack(index: _index, children: _screens),
+            ),
+          ),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
@@ -153,7 +185,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           const NavigationDestination(
             icon:         Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings),
-            label:        'Paramètres',
+            label: 'Paramètres',
           ),
         ],
       ),

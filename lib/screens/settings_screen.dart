@@ -3,6 +3,7 @@ import '../config/api_config.dart';
 import '../models/assistant_identity.dart';
 import '../services/app_version.dart';
 import '../services/backend_client.dart';
+import '../services/pairing.dart';
 import '../services/update_checker.dart';
 import '../services/update_launcher.dart';
 
@@ -16,9 +17,17 @@ Future<UpdateStatus> _checkForUpdate() => UpdateChecker().check();
 /// LunAcedia first — it is the product (ADR-008). Wiring to a hub is an advanced, optional setting
 /// (ADR-020 D2, live check C20): no mode switch, and no assistant name written in the app.
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, this.probe = _probeServer, this.checkUpdate = _checkForUpdate});
+  const SettingsScreen({
+    super.key,
+    this.probe = _probeServer,
+    this.checkUpdate = _checkForUpdate,
+    this.pair = pairDevice,
+  });
 
   final IdentityProbe probe;
+
+  /// Pairs this phone with a server (ADR-020 M3) — injectable for widget tests.
+  final PairDevice pair;
 
   /// Asks GitHub for a newer signed release (ADR-020 M1) — injectable for widget tests.
   final Future<UpdateStatus> Function() checkUpdate;
@@ -35,7 +44,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _loaded   = false;
   bool _saving   = false;
   bool _testing  = false;
-  bool _obscure  = true;
 
   /// Result of the last "Tester la connexion" — null until the first test.
   String? _testResult;
@@ -162,18 +170,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  InputDecoration _field(String label, IconData icon, {String? hint, bool secret = false}) => InputDecoration(
+  InputDecoration _field(String label, IconData icon, {String? hint}) => InputDecoration(
         labelText: label,
         hintText: hint,
         prefixIcon: Icon(icon),
         border: const OutlineInputBorder(),
-        suffixIcon: secret
-            ? IconButton(
-                icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                onPressed: () => setState(() => _obscure = !_obscure),
-              )
-            : null,
       );
+
+  TextEditingController _urlOf(PairingTarget t) => t == PairingTarget.lunacedia ? _acediaUrlCtrl : _hubUrlCtrl;
+  TextEditingController _tokenOf(PairingTarget t) => t == PairingTarget.lunacedia ? _acediaTokenCtrl : _hubTokenCtrl;
+
+  /// Where this phone stands with a server, and the way to pair it (ADR-020 M3). No secret is ever typed here.
+  Widget _pairingRow(PairingTarget target) {
+    final colors = Theme.of(context).colorScheme;
+    final state = pairingStateOf(_tokenOf(target).text);
+    final (icon, label, color) = switch (state) {
+      PairingState.paired => (Icons.verified_user_outlined, 'Cet appareil est appairé.', colors.primary),
+      PairingState.legacySecret => (
+          Icons.warning_amber_outlined,
+          'Ancien secret enregistré sur le téléphone — appairez cet appareil pour le remplacer.',
+          colors.error,
+        ),
+      PairingState.none => (Icons.link_off, "Cet appareil n'est pas appairé.", colors.onSurfaceVariant),
+    };
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 8),
+        Expanded(child: Text(label, style: TextStyle(color: color))),
+        TextButton(
+          onPressed: () => _openPairDialog(target),
+          child: Text(state == PairingState.paired ? 'Ré-appairer' : 'Appairer'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openPairDialog(PairingTarget target) async {
+    final url = _urlOf(target).text.trim();
+    final messenger = ScaffoldMessenger.of(context);
+    if (url.isEmpty) {
+      messenger.showSnackBar(const SnackBar(content: Text("Renseignez d'abord l'adresse.")));
+      return;
+    }
+    final token = await showDialog<String>(
+      context: context,
+      builder: (_) => _PairDialog(target: target, url: url, pair: widget.pair),
+    );
+    if (token == null || !mounted) return;
+    // The device token replaces whatever was stored — an old master secret included (ADR-020 M3).
+    setState(() => _tokenOf(target).text = token);
+    await ApiConfig.save(
+      acediaUrl:   _acediaUrlCtrl.text,
+      acediaToken: _acediaTokenCtrl.text,
+      hubUrl:      _hubUrlCtrl.text,
+      hubToken:    _hubTokenCtrl.text,
+    );
+    messenger.showSnackBar(const SnackBar(content: Text("Appareil appairé — redémarrez l'app")));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -197,12 +251,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             decoration: _field('Adresse', Icons.link, hint: 'http://192.168.1.x:4001'),
             keyboardType: TextInputType.url,
           ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _acediaTokenCtrl,
-            obscureText: _obscure,
-            decoration: _field('Jeton d\'accès', Icons.key_outlined, secret: true),
-          ),
+          const SizedBox(height: 8),
+          _pairingRow(PairingTarget.lunacedia),
           const SizedBox(height: 16),
           // ── Hub (advanced) ───────────────────────────────────────────────────
           // Built only once the saved values are in, so an already-wired install opens it expanded.
@@ -222,12 +272,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   decoration: _field('Adresse du hub', Icons.hub_outlined, hint: 'http://192.168.1.x:3333'),
                   keyboardType: TextInputType.url,
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _hubTokenCtrl,
-                  obscureText: _obscure,
-                  decoration: _field('Jeton du hub', Icons.key_outlined, secret: true),
-                ),
+                const SizedBox(height: 8),
+                _pairingRow(PairingTarget.hub),
               ],
             ),
           const SizedBox(height: 16),
@@ -292,6 +338,84 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _updateSection(),
         ],
       ),
+    );
+  }
+}
+
+/// Asks the one-time code (shown in LunAcedia's dashboard or the hub's panel) and a name for this phone.
+class _PairDialog extends StatefulWidget {
+  const _PairDialog({required this.target, required this.url, required this.pair});
+  final PairingTarget target;
+  final String url;
+  final PairDevice pair;
+
+  @override
+  State<_PairDialog> createState() => _PairDialogState();
+}
+
+class _PairDialogState extends State<_PairDialog> {
+  final _code = TextEditingController();
+  final _name = TextEditingController(text: 'Mon téléphone');
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _code.dispose();
+    _name.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final token = await widget.pair(
+        target: widget.target,
+        url: widget.url,
+        code: _code.text.trim(),
+        name: _name.text.trim(),
+      );
+      if (mounted) Navigator.of(context).pop(token);
+    } catch (e) {
+      if (mounted) setState(() => _error = pairingErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final where = widget.target == PairingTarget.lunacedia
+        ? 'le tableau de bord de LunAcedia (Appareils)'
+        : 'le panel (Pilotage › Accès)';
+    return AlertDialog(
+      title: const Text('Appairer cet appareil'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text("Demandez un code dans $where, puis saisissez-le ici. Il ne sert qu'une fois et expire au bout de 10 minutes."),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _code,
+            decoration: const InputDecoration(labelText: 'Code'),
+            textCapitalization: TextCapitalization.characters,
+          ),
+          const SizedBox(height: 8),
+          TextField(controller: _name, decoration: const InputDecoration(labelText: 'Nom de cet appareil')),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: _busy ? null : () => Navigator.of(context).pop(), child: const Text('Annuler')),
+        FilledButton(onPressed: _busy ? null : _submit, child: Text(_busy ? '…' : 'Appairer')),
+      ],
     );
   }
 }

@@ -5,6 +5,7 @@ import 'providers/alert_provider.dart';
 import 'providers/chat_provider.dart';
 import 'screens/main_shell.dart';
 import 'services/backend_client.dart';
+import 'services/pairing.dart';
 
 class LunAvaritiaApp extends StatelessWidget {
   const LunAvaritiaApp({super.key, required this.config});
@@ -26,7 +27,10 @@ class LunAvaritiaApp extends StatelessWidget {
         theme: _buildTheme(Brightness.light),
         darkTheme: _buildTheme(Brightness.dark),
         themeMode: ThemeMode.system,
-        home: MainShell(),
+        // ADR-020 M3: a phone that is not paired (or still holds an old shared secret) says so everywhere.
+        home: MainShell(
+          pairingNeeded: config.baseUrl.isNotEmpty && pairingStateOf(config.token) != PairingState.paired,
+        ),
       ),
     );
   }

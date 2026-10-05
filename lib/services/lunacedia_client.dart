@@ -3,6 +3,7 @@ import '../models/alert.dart';
 import '../models/assistant_identity.dart';
 import 'backend_client.dart';
 import 'http_transport.dart';
+import 'inbox_api.dart';
 import 'topic_api.dart';
 
 /// Maps a raw LunAcedia event (GET /api/events) to the shared Alert model.
@@ -26,12 +27,17 @@ Alert eventToAlert(Map<String, dynamic> e) => Alert.fromJson({
 class LunAcediaClient extends BackendClient {
   LunAcediaClient(ApiConfig config) : this._(HttpTransport(config));
 
-  LunAcediaClient._(this._http) : topics = TopicApi.lunacedia(_http);
+  LunAcediaClient._(this._http)
+      : topics = TopicApi.lunacedia(_http),
+        inbox = InboxApi.lunacedia(_http);
 
   final HttpTransport _http;
 
   @override
   final TopicApi topics;
+
+  @override
+  final InboxApi inbox;
 
   @override
   Future<AssistantIdentity> getIdentity() async =>

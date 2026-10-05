@@ -1,9 +1,11 @@
 import 'package:lunavaritia/config/api_config.dart';
 import 'package:lunavaritia/models/alert.dart';
 import 'package:lunavaritia/models/assistant_identity.dart';
+import 'package:lunavaritia/models/box_item.dart';
 import 'package:lunavaritia/models/topic.dart';
 import 'package:lunavaritia/services/backend_client.dart';
 import 'package:lunavaritia/services/http_transport.dart';
+import 'package:lunavaritia/services/inbox_api.dart';
 import 'package:lunavaritia/services/topic_api.dart';
 import 'package:lunavaritia/services/update_checker.dart';
 
@@ -111,6 +113,47 @@ class FakeTopicApi extends TopicApi {
   }
 }
 
+/// The box in memory: gestures recorded, "removed" takes the item out, read/unread flip it.
+class FakeInboxApi extends InboxApi {
+  FakeInboxApi() : super(HttpTransport(ApiConfig.forTest(baseUrl: 'http://fake')), path: '/i');
+
+  List<BoxItem> items = [];
+  List<TrashItem> trashed = [];
+  final List<(String, BoxGesture)> gestures = [];
+  final List<String> restored = [];
+  Object? gestureError;
+  String openBody = '';
+
+  @override
+  Future<BoxPage> list() async => BoxPage(items: List.of(items), unread: items.where((i) => !i.read).length);
+
+  @override
+  Future<GestureResult> gesture(String key, BoxGesture gesture) async {
+    gestures.add((key, gesture));
+    if (gestureError != null) throw gestureError!;
+    final change = switch (gesture) {
+      BoxGesture.open || BoxGesture.read => BoxChange.read,
+      BoxGesture.unread => BoxChange.unread,
+      BoxGesture.archive || BoxGesture.trash || BoxGesture.done => BoxChange.removed,
+    };
+    if (change == BoxChange.removed) {
+      items.removeWhere((i) => i.key == key);
+    } else {
+      items = [for (final i in items) i.key == key ? i.copyWith(read: change == BoxChange.read) : i];
+    }
+    return GestureResult(change: change, body: gesture == BoxGesture.open ? openBody : null);
+  }
+
+  @override
+  Future<List<TrashItem>> trash() async => List.of(trashed);
+
+  @override
+  Future<void> restore(String messageId) async {
+    restored.add(messageId);
+    trashed.removeWhere((t) => t.id == messageId);
+  }
+}
+
 class FakeBackend extends BackendClient {
   FakeBackend({List<Alert>? alerts, this.digest = '', this.digestError, AssistantIdentity? identity})
       : alerts = alerts ?? [],
@@ -123,6 +166,9 @@ class FakeBackend extends BackendClient {
 
   @override
   final FakeTopicApi topics = FakeTopicApi();
+
+  @override
+  final FakeInboxApi inbox = FakeInboxApi();
 
   @override
   Future<AssistantIdentity> getIdentity() async => identity;

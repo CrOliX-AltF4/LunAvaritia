@@ -108,7 +108,7 @@ void main() {
         const AgentAction(kind: 'propose_memory', status: 'pending', id: 'p1', connector: 'memory', fields: {'text': 'Le syndic écrit par mail.'}),
       ])),
     ]);
-    expect(find.text('Proposé pour la mémoire — à valider dans le panel.'), findsOneWidget);
+    expect(find.text('Proposé pour la mémoire — à retenir dans « À valider ».'), findsOneWidget);
     expect(find.text('Confirmer'), findsNothing);
   });
 

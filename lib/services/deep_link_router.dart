@@ -3,10 +3,18 @@ import 'package:flutter/foundation.dart';
 /// Where a tapped notification leads (ADR-020 §5.10 M4c): the box item it announces, read in full — or the box when the
 /// notification is about nothing in it (a hub alert, a spend alert).
 class DeepLinkTarget {
-  const DeepLinkTarget.box({this.boxKey});
+  const DeepLinkTarget.box({this.boxKey}) : validate = false;
+
+  /// « Action à valider » (ADR-020 §5.11 M5d): a write waiting for Master.
+  const DeepLinkTarget.validate()
+      : boxKey = null,
+        validate = true;
 
   /// The box item; null opens the box itself.
   final String? boxKey;
+
+  /// Opens « À valider » instead of the box.
+  final bool validate;
 }
 
 /// Global, minimal channel for "go there" requests that originate outside the widget tree — a tapped push
@@ -39,6 +47,8 @@ class DeepLinkRouter extends ChangeNotifier {
 
 /// LunAcedia's push carries the item's `dedupeKey`; the hub's carries `key` when its alert is about a box item.
 DeepLinkTarget resolveDeepLinkTarget(Map<String, dynamic> data) {
+  // Both servers send it with this type (LunAcedia directly, the hub relaying it).
+  if (data['type'] == 'system.action_pending') return const DeepLinkTarget.validate();
   final key = data['key'] ?? data['dedupeKey'];
   return DeepLinkTarget.box(boxKey: key is String && key.isNotEmpty ? key : null);
 }

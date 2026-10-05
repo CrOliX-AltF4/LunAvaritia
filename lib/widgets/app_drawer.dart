@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../models/topic.dart';
 import '../providers/box_controller.dart';
+import '../providers/validation_controller.dart';
 import '../providers/identity_provider.dart';
 import '../providers/shell_controller.dart';
 import '../providers/topics_provider.dart';
@@ -25,6 +26,7 @@ class AppDrawer extends StatelessWidget {
     final shell = context.watch<ShellController>();
     final identity = context.watch<IdentityProvider>().identity;
     final box = context.watch<BoxController>();
+    final validation = context.watch<ValidationController>();
     final topicsProvider = context.watch<TopicsProvider>();
     final urgent = box.urgentUnreadCount;
     final groups = groupTopicsByDay(topicsProvider.topics, now());
@@ -81,6 +83,15 @@ class AppDrawer extends StatelessWidget {
                 Text('${box.unreadCount}', style: da(size: 13, color: Palette.lune)),
               ],
               onTap: () => shell.go(const BoxDestination()),
+            ),
+            _NavRow(
+              icon: Icons.fact_check_outlined,
+              label: 'À valider',
+              selected: shell.current is ValidateDestination,
+              trailing: [
+                if (validation.count > 0) Text('${validation.count}', style: da(size: 13, color: Palette.lune)),
+              ],
+              onTap: () => shell.go(const ValidateDestination()),
             ),
             const Divider(),
             Expanded(

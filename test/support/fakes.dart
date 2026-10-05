@@ -6,6 +6,7 @@ import 'package:lunavaritia/models/topic.dart';
 import 'package:lunavaritia/services/backend_client.dart';
 import 'package:lunavaritia/services/http_transport.dart';
 import 'package:lunavaritia/services/inbox_api.dart';
+import 'package:lunavaritia/services/validation_api.dart';
 import 'package:lunavaritia/services/topic_api.dart';
 import 'package:lunavaritia/services/update_checker.dart';
 
@@ -158,6 +159,47 @@ class FakeInboxApi extends InboxApi {
   }
 }
 
+/// « À valider » in memory: decisions and proposal answers recorded; a decided item leaves its list.
+class FakeValidationApi extends ValidationApi {
+  FakeValidationApi({bool hub = true})
+      : super(HttpTransport(ApiConfig.forTest(baseUrl: 'http://fake')),
+            actionsPath: '/a', pendingPath: '/a/p', proposalsPath: hub ? '/p' : null);
+
+  List<PendingWrite> writes = [];
+  List<MemoryProposal> proposalList = [];
+  final List<(String, bool)> decisions = [];
+  final List<(String, String?)> approved = [];
+  final List<String> rejected = [];
+  Object? decideError;
+  Object? approveError;
+
+  @override
+  Future<List<PendingWrite>> actions() async => List.of(writes);
+
+  @override
+  Future<void> decide(String id, {required bool confirm}) async {
+    decisions.add((id, confirm));
+    if (decideError != null) throw decideError!;
+    writes.removeWhere((w) => w.id == id);
+  }
+
+  @override
+  Future<List<MemoryProposal>> proposals() async => hasMemory ? List.of(proposalList) : const [];
+
+  @override
+  Future<void> approve(String id, {String? text}) async {
+    approved.add((id, text));
+    if (approveError != null) throw approveError!;
+    proposalList.removeWhere((p) => p.id == id);
+  }
+
+  @override
+  Future<void> reject(String id) async {
+    rejected.add(id);
+    proposalList.removeWhere((p) => p.id == id);
+  }
+}
+
 class FakeBackend extends BackendClient {
   FakeBackend({this.digest = '', this.digestError, AssistantIdentity? identity})
       : identity = identity ?? const AssistantIdentity(name: 'Natsume', isCompanion: true);
@@ -171,6 +213,9 @@ class FakeBackend extends BackendClient {
 
   @override
   final FakeInboxApi inbox = FakeInboxApi();
+
+  @override
+  final FakeValidationApi validation = FakeValidationApi();
 
   @override
   Future<AssistantIdentity> getIdentity() async => identity;

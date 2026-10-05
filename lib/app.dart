@@ -5,6 +5,7 @@ import 'providers/box_controller.dart';
 import 'providers/identity_provider.dart';
 import 'providers/shell_controller.dart';
 import 'providers/topics_provider.dart';
+import 'providers/validation_controller.dart';
 import 'screens/main_shell.dart';
 import 'services/backend_client.dart';
 import 'services/pairing.dart';
@@ -26,6 +27,7 @@ class LunAvaritiaApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => IdentityProvider(client)),
         ChangeNotifierProvider(create: (_) => TopicsProvider(client)),
         ChangeNotifierProvider(create: (_) => BoxController(client)),
+        ChangeNotifierProvider(create: (_) => ValidationController(client)),
       ],
       child: MaterialApp(
         title: "Lun'Avaritia",

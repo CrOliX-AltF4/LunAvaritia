@@ -354,7 +354,7 @@ class ActionCard extends StatelessWidget {
     if (action.isMemoryProposal) {
       return Text(
         switch (action.status) {
-          'pending' => 'Proposé pour la mémoire — à valider dans le panel.',
+          'pending' => 'Proposé pour la mémoire — à retenir dans « À valider ».',
           'executed' => 'Retenu.',
           _ => 'Pas retenu${action.reason != null ? ' : ${action.reason}' : '.'}',
         },

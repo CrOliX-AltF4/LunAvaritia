@@ -3,6 +3,7 @@ import '../models/alert.dart';
 import '../models/assistant_identity.dart';
 import 'api_service.dart';
 import 'inbox_api.dart';
+import 'validation_api.dart';
 import 'lunacedia_client.dart';
 import 'topic_api.dart';
 
@@ -14,6 +15,9 @@ abstract class BackendClient {
 
   /// The box — LunAcedia's, gestures at the source (ADR-018, ADR-020 §5.10).
   InboxApi get inbox;
+
+  /// « À valider »: pending writes, and the hub's memory proposals (ADR-020 §5.11).
+  ValidationApi get validation;
 
   /// Who answers — name and whether it is the hub's companion (ADR-020 D2). Also the connection test.
   Future<AssistantIdentity> getIdentity();

@@ -4,6 +4,7 @@ import '../models/assistant_identity.dart';
 import 'backend_client.dart';
 import 'http_transport.dart';
 import 'inbox_api.dart';
+import 'validation_api.dart';
 import 'topic_api.dart';
 
 /// LunAcedia on its own (standalone mode).
@@ -12,7 +13,8 @@ class LunAcediaClient extends BackendClient {
 
   LunAcediaClient._(this._http)
       : topics = TopicApi.lunacedia(_http),
-        inbox = InboxApi.lunacedia(_http);
+        inbox = InboxApi.lunacedia(_http),
+        validation = ValidationApi.lunacedia(_http);
 
   final HttpTransport _http;
 
@@ -21,6 +23,9 @@ class LunAcediaClient extends BackendClient {
 
   @override
   final InboxApi inbox;
+
+  @override
+  final ValidationApi validation;
 
   @override
   Future<AssistantIdentity> getIdentity() async =>

@@ -4,6 +4,7 @@ import '../models/assistant_identity.dart';
 import 'backend_client.dart';
 import 'http_transport.dart';
 import 'inbox_api.dart';
+import 'validation_api.dart';
 import 'topic_api.dart';
 
 /// The hub (Natsume Core) — its mobile façade under /api/mobile/*.
@@ -12,7 +13,8 @@ class ApiService extends BackendClient {
 
   ApiService._(this._http)
       : topics = TopicApi.hub(_http),
-        inbox = InboxApi.hub(_http);
+        inbox = InboxApi.hub(_http),
+        validation = ValidationApi.hub(_http);
 
   final HttpTransport _http;
 
@@ -21,6 +23,9 @@ class ApiService extends BackendClient {
 
   @override
   final InboxApi inbox;
+
+  @override
+  final ValidationApi validation;
 
   @override
   Future<AssistantIdentity> getIdentity() async =>

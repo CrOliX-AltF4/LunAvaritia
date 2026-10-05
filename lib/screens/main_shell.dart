@@ -8,6 +8,7 @@ import '../providers/identity_provider.dart';
 import '../providers/shell_controller.dart';
 import '../providers/topic_controller.dart';
 import '../providers/topics_provider.dart';
+import '../providers/validation_controller.dart';
 import '../services/backend_client.dart';
 import '../services/deep_link_router.dart';
 import '../services/digest_gate.dart';
@@ -22,6 +23,7 @@ import 'home_screen.dart';
 import 'settings_screen.dart';
 import 'topic_screen.dart';
 import 'trash_screen.dart';
+import 'validate_screen.dart';
 
 /// One screen at a time and a drawer for the rest (DA1 « sujet + tiroir », ADR-020 §5.3) — no tabs.
 class MainShell extends StatefulWidget {
@@ -73,6 +75,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       unawaited(context.read<IdentityProvider>().refresh());
       unawaited(context.read<TopicsProvider>().refresh());
       unawaited(context.read<BoxController>().load());
+      unawaited(context.read<ValidationController>().load());
     });
     // Cold start counts as "waking" the app too, not just a foreground resume.
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowDigest());
@@ -98,6 +101,11 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     final target = widget.deepLinkRouter.pending;
     if (target == null || !mounted) return;
     widget.deepLinkRouter.consume();
+    if (target.validate) {
+      context.read<ShellController>().go(const ValidateDestination());
+      unawaited(context.read<ValidationController>().load());
+      return;
+    }
     final key = target.boxKey;
     // The tapped notification is presumably the freshest thing there is: the box is read again either way.
     final box = context.read<BoxController>();
@@ -113,7 +121,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   }
 
   void _onBoxNudged() {
-    if (mounted) unawaited(context.read<BoxController>().load());
+    if (!mounted) return;
+    unawaited(context.read<BoxController>().load());
+    unawaited(context.read<ValidationController>().load());
   }
 
   @override
@@ -174,6 +184,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         BoxDestination() => const BoxScreen(),
         BoxItemDestination(:final key) => BoxReaderScreen(key: ValueKey('box-item-$key'), itemKey: key),
         TrashDestination() => const TrashScreen(),
+        ValidateDestination() => const ValidateScreen(),
         ArchivedDestination() => const ArchivedScreen(),
         SettingsDestination() => widget.settings ?? const SettingsScreen(),
       };

@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lunavaritia/models/box_item.dart';
+import 'package:lunavaritia/services/validation_api.dart';
 import 'package:lunavaritia/providers/box_controller.dart';
+import 'package:lunavaritia/providers/validation_controller.dart';
 import 'package:lunavaritia/providers/identity_provider.dart';
 import 'package:lunavaritia/providers/shell_controller.dart';
 import 'package:lunavaritia/providers/topics_provider.dart';
@@ -35,6 +37,7 @@ Widget _buildShell(
       ChangeNotifierProvider(create: (_) => IdentityProvider(backend)),
       ChangeNotifierProvider(create: (_) => TopicsProvider(backend)),
       ChangeNotifierProvider(create: (_) => BoxController(backend)),
+      ChangeNotifierProvider(create: (_) => ValidationController(backend)),
     ],
     child: MaterialApp(
       theme: buildAppTheme(),
@@ -139,6 +142,30 @@ void main() {
       router.nudgeBox();
       await tester.pumpAndSettle();
       expect(find.text('Nouveau mail'), findsOneWidget);
+    });
+  });
+
+  group('MainShell — « Action à valider » (ADR-020 §5.11 M5d)', () {
+    testWidgets('a pending-write notification opens « À valider », listed in the drawer with its count', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final backend = FakeBackend();
+      backend.validation.writes = [
+        PendingWrite(id: 'a1', summary: 'Répondre à un mail — Noté.', connector: 'Gmail', createdAt: DateTime.now()),
+      ];
+      final router = DeepLinkRouter.instance..consume();
+      final shell = ShellController();
+      await tester.pumpWidget(_buildShell(backend, shell: shell, deepLinkRouter: router));
+      await tester.pumpAndSettle();
+
+      router.request(const DeepLinkTarget.validate());
+      await tester.pumpAndSettle();
+      expect(shell.current, isA<ValidateDestination>());
+      expect(find.text('Répondre à un mail — Noté.'), findsOneWidget);
+
+      shell.openDrawer();
+      await tester.pumpAndSettle();
+      expect(find.text('À valider'), findsWidgets);
+      expect(find.text('1'), findsWidgets);
     });
   });
 

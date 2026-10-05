@@ -40,11 +40,11 @@ class BoxItem {
   /// The gestures this source can do. LunAcedia refuses the others; the app does not offer them (§5.10).
   Set<BoxGesture> get gestures => switch (source) {
         BoxSource.email => {BoxGesture.read, BoxGesture.unread, BoxGesture.archive, BoxGesture.trash},
-        BoxSource.github => {BoxGesture.done},
+        BoxSource.github || BoxSource.tasks => {BoxGesture.done},
         _ => <BoxGesture>{},
       };
 
-  /// The swipe: archive a mail, mark a GitHub notification done. Never the trash (§5.10 Q2).
+  /// The swipe: archive a mail, mark a GitHub notification done. Never the trash (§5.10 Q2), never a task's "Fait".
   BoxGesture? get swipe => switch (source) {
         BoxSource.email => BoxGesture.archive,
         BoxSource.github => BoxGesture.done,

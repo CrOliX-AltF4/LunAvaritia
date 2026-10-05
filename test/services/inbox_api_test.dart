@@ -118,6 +118,9 @@ void main() {
     expect(item('email').swipe, BoxGesture.archive);
     expect(item('github').gestures, {BoxGesture.done});
     expect(item('github').swipe, BoxGesture.done);
+    // "Fait" on a task (M4d): offered, never on a swipe — completing a task by a slip is worse than archiving a mail.
+    expect(item('tasks').gestures, {BoxGesture.done});
+    expect(item('tasks').swipe, isNull);
     expect(item('calendar').gestures, isEmpty);
     expect(item('calendar').swipe, isNull);
   });

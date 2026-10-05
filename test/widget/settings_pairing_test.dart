@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:lunavaritia/config/api_config.dart';
 import 'package:lunavaritia/models/assistant_identity.dart';
 import 'package:lunavaritia/screens/settings_screen.dart';
 import 'package:lunavaritia/services/backend_error.dart';
@@ -40,12 +41,13 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(_secureStorageChannel, null);
   });
 
-  Future<void> pump(WidgetTester tester, PairDevice pair) async {
+  Future<void> pump(WidgetTester tester, PairDevice pair, {RegisterPush? registerPush}) async {
     await tester.pumpWidget(MaterialApp(
       home: SettingsScreen(
         probe: (_) async => AssistantIdentity.unknown,
         checkUpdate: () async => const UpToDate('1.4.0'),
         pair: pair,
+        registerPush: registerPush ?? (_) async {},
       ),
     ));
     await tester.pumpAndSettle();
@@ -90,6 +92,27 @@ void main() {
     expect(secure['acedia_token'], 'acd_dev_new');
     expect(secure.values, isNot(contains('the-acedia-master-secret')));
     expect(find.text('Cet appareil est appairé.'), findsOneWidget);
+  });
+
+  // Live check V3 (2026-10-05): the push token was only sent at startup, refused before pairing, never sent again.
+  testWidgets('registers for notifications with the new device token right after pairing', (tester) async {
+    SharedPreferences.setMockInitialValues({'acedia_url': 'http://acedia:4001'});
+    final registered = <ApiConfig>[];
+    await pump(
+      tester,
+      ({required target, required url, required code, required name}) async => 'acd_dev_new',
+      registerPush: (config) async => registered.add(config),
+    );
+
+    await tester.tap(find.text('Appairer'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Code'), 'ABCD2345');
+    await tester.tap(find.widgetWithText(FilledButton, 'Appairer'));
+    await tester.pumpAndSettle();
+
+    expect(registered, hasLength(1));
+    expect(registered.single.baseUrl, 'http://acedia:4001');
+    expect(registered.single.token, 'acd_dev_new');
   });
 
   testWidgets('says why pairing failed and keeps the dialog open', (tester) async {

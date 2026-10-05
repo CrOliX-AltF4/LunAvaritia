@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../config/api_config.dart';
 import '../models/assistant_identity.dart';
 import '../services/app_version.dart';
 import '../services/backend_client.dart';
 import '../services/pairing.dart';
+import '../services/push_service.dart';
 import '../widgets/shell_widgets.dart';
 import '../services/update_checker.dart';
 import '../services/update_launcher.dart';
@@ -15,6 +18,9 @@ Future<AssistantIdentity> _probeServer(ApiConfig config) => buildBackendClient(c
 
 Future<UpdateStatus> _checkForUpdate() => UpdateChecker().check();
 
+/// Sends the notification token to the server a config talks to — injectable so a widget test needs no Firebase.
+typedef RegisterPush = Future<void> Function(ApiConfig config);
+
 /// LunAcedia first — it is the product (ADR-008). Wiring to a hub is an advanced, optional setting
 /// (ADR-020 D2, live check C20): no mode switch, and no assistant name written in the app.
 class SettingsScreen extends StatefulWidget {
@@ -23,12 +29,16 @@ class SettingsScreen extends StatefulWidget {
     this.probe = _probeServer,
     this.checkUpdate = _checkForUpdate,
     this.pair = pairDevice,
+    this.registerPush = registerPushTokenWith,
   });
 
   final IdentityProbe probe;
 
   /// Pairs this phone with a server (ADR-020 M3) — injectable for widget tests.
   final PairDevice pair;
+
+  /// Registers for notifications right after a pairing, with the new device token (live check V3).
+  final RegisterPush registerPush;
 
   /// Asks GitHub for a newer signed release (ADR-020 M1) — injectable for widget tests.
   final Future<UpdateStatus> Function() checkUpdate;
@@ -227,6 +237,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       hubUrl:      _hubUrlCtrl.text,
       hubToken:    _hubTokenCtrl.text,
     );
+    // The server the app talks to now — the hub when wired, even if it is LunAcedia that was just paired.
+    unawaited(ApiConfig.load().then(widget.registerPush));
     messenger.showSnackBar(const SnackBar(content: Text("Appareil appairé — redémarrez l'app")));
   }
 

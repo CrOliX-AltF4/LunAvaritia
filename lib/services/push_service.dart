@@ -2,8 +2,19 @@ import 'dart:convert';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import '../config/api_config.dart';
 import 'backend_client.dart';
 import 'deep_link_router.dart';
+
+/// Sends this phone's notification token to the server [config] talks to. Called right after a pairing (live
+/// check V3): at startup an unpaired phone is refused, and nothing used to send the token again until a restart.
+/// Non-fatal — Firebase may not be configured, the server may be out of reach.
+Future<void> registerPushTokenWith(ApiConfig config) async {
+  try {
+    final token = await FirebaseMessaging.instance.getToken();
+    if (token != null) await buildBackendClient(config).registerPushToken(token);
+  } catch (_) {}
+}
 
 // Top-level handler required by Firebase for background messages
 @pragma('vm:entry-point')

@@ -319,7 +319,7 @@ Future<void> _showItem(BuildContext context, CitedItem item) {
   );
 }
 
-/// An action the agent did or proposes. One waiting on the user is settled right here (ADR-020 §5.8 (a)).
+/// An action the agent did or proposes. One waiting on the user is settled right here.
 class ActionCard extends StatelessWidget {
   const ActionCard({super.key, required this.message, required this.action});
 
@@ -354,7 +354,7 @@ class ActionCard extends StatelessWidget {
     if (action.isMemoryProposal) {
       return Text(
         switch (action.status) {
-          'pending' => 'Proposé pour la mémoire — à valider dans le panel.',
+          'pending' => 'Proposé pour la mémoire — à retenir dans « À valider ».',
           'executed' => 'Retenu.',
           _ => 'Pas retenu${action.reason != null ? ' : ${action.reason}' : '.'}',
         },
@@ -373,7 +373,7 @@ class ActionCard extends StatelessWidget {
     }
     final controller = context.watch<TopicController>();
     final state = controller.decisionOf(message, action);
-    final left = controller.remainingFor(message);
+    final left = controller.remainingFor(message, action);
     return switch (state) {
       DecisionState.waiting || DecisionState.failed || DecisionState.deciding => Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -402,7 +402,7 @@ class ActionCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'expire dans ${left.inMinutes < 1 ? "moins d'une minute" : '${left.inMinutes} min'}',
+              'expire dans ${expiresIn(left)}',
               style: da(size: 12, color: Palette.lune),
             ),
           ],
@@ -413,4 +413,12 @@ class ActionCard extends StatelessWidget {
         Text('Expiré — rien n’a été fait. Redemandez dans le sujet.', style: da(size: 13, color: Palette.lune)),
     };
   }
+}
+
+/// « moins d'une minute », « 12 min », « 1 h 30 », « 23 h » — a pending write may wait up to a day.
+String expiresIn(Duration left) {
+  if (left.inMinutes < 1) return "moins d'une minute";
+  if (left.inHours < 1) return '${left.inMinutes} min';
+  final minutes = left.inMinutes % 60;
+  return minutes == 0 ? '${left.inHours} h' : '${left.inHours} h ${minutes.toString().padLeft(2, '0')}';
 }

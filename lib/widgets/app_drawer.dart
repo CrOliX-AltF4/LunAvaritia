@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
-import '../models/alert.dart';
 import '../models/topic.dart';
-import '../providers/alert_provider.dart';
+import '../providers/box_controller.dart';
+import '../providers/validation_controller.dart';
 import '../providers/identity_provider.dart';
 import '../providers/shell_controller.dart';
 import '../providers/topics_provider.dart';
@@ -25,9 +25,10 @@ class AppDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final shell = context.watch<ShellController>();
     final identity = context.watch<IdentityProvider>().identity;
-    final alerts = context.watch<AlertProvider>();
+    final box = context.watch<BoxController>();
+    final validation = context.watch<ValidationController>();
     final topicsProvider = context.watch<TopicsProvider>();
-    final urgent = alerts.unreadAlerts.where((a) => a.priority == AlertPriority.urgent).length;
+    final urgent = box.urgentUnreadCount;
     final groups = groupTopicsByDay(topicsProvider.topics, now());
     final currentId = switch (shell.current) {
       TopicDestination(:final id) => id,
@@ -73,13 +74,24 @@ class AppDrawer extends StatelessWidget {
             _NavRow(
               icon: Icons.inbox_outlined,
               label: 'Boîte',
-              selected: shell.current is BoxDestination,
+              selected: shell.current is BoxDestination ||
+                  shell.current is BoxItemDestination ||
+                  shell.current is TrashDestination,
               trailing: [
                 if (urgent > 0) UrgentBadge(label: '$urgent'),
                 const SizedBox(width: 10),
-                Text('${alerts.unreadCount}', style: da(size: 13, color: Palette.lune)),
+                Text('${box.unreadCount}', style: da(size: 13, color: Palette.lune)),
               ],
               onTap: () => shell.go(const BoxDestination()),
+            ),
+            _NavRow(
+              icon: Icons.fact_check_outlined,
+              label: 'À valider',
+              selected: shell.current is ValidateDestination,
+              trailing: [
+                if (validation.count > 0) Text('${validation.count}', style: da(size: 13, color: Palette.lune)),
+              ],
+              onTap: () => shell.go(const ValidateDestination()),
             ),
             const Divider(),
             Expanded(

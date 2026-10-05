@@ -1,9 +1,12 @@
 import 'package:lunavaritia/config/api_config.dart';
 import 'package:lunavaritia/models/alert.dart';
 import 'package:lunavaritia/models/assistant_identity.dart';
+import 'package:lunavaritia/models/box_item.dart';
 import 'package:lunavaritia/models/topic.dart';
 import 'package:lunavaritia/services/backend_client.dart';
 import 'package:lunavaritia/services/http_transport.dart';
+import 'package:lunavaritia/services/inbox_api.dart';
+import 'package:lunavaritia/services/validation_api.dart';
 import 'package:lunavaritia/services/topic_api.dart';
 import 'package:lunavaritia/services/update_checker.dart';
 
@@ -111,12 +114,96 @@ class FakeTopicApi extends TopicApi {
   }
 }
 
-class FakeBackend extends BackendClient {
-  FakeBackend({List<Alert>? alerts, this.digest = '', this.digestError, AssistantIdentity? identity})
-      : alerts = alerts ?? [],
-        identity = identity ?? const AssistantIdentity(name: 'Natsume', isCompanion: true);
+/// The box in memory: gestures recorded, "removed" takes the item out, read/unread flip it.
+class FakeInboxApi extends InboxApi {
+  FakeInboxApi() : super(HttpTransport(ApiConfig.forTest(baseUrl: 'http://fake')), path: '/i');
 
-  final List<Alert> alerts;
+  List<BoxItem> items = [];
+  List<TrashItem> trashed = [];
+  final List<(String, BoxGesture)> gestures = [];
+  final List<String> restored = [];
+  Object? gestureError;
+  Object? listError;
+  String openBody = '';
+
+  @override
+  Future<BoxPage> list() async {
+    if (listError != null) throw listError!;
+    return BoxPage(items: List.of(items), unread: items.where((i) => !i.read).length);
+  }
+
+  @override
+  Future<GestureResult> gesture(String key, BoxGesture gesture) async {
+    gestures.add((key, gesture));
+    if (gestureError != null) throw gestureError!;
+    final change = switch (gesture) {
+      BoxGesture.open || BoxGesture.read => BoxChange.read,
+      BoxGesture.unread => BoxChange.unread,
+      BoxGesture.archive || BoxGesture.trash || BoxGesture.done => BoxChange.removed,
+    };
+    if (change == BoxChange.removed) {
+      items.removeWhere((i) => i.key == key);
+    } else {
+      items = [for (final i in items) i.key == key ? i.copyWith(read: change == BoxChange.read) : i];
+    }
+    return GestureResult(change: change, body: gesture == BoxGesture.open ? openBody : null);
+  }
+
+  @override
+  Future<List<TrashItem>> trash() async => List.of(trashed);
+
+  @override
+  Future<void> restore(String messageId) async {
+    restored.add(messageId);
+    trashed.removeWhere((t) => t.id == messageId);
+  }
+}
+
+/// « À valider » in memory: decisions and proposal answers recorded; a decided item leaves its list.
+class FakeValidationApi extends ValidationApi {
+  FakeValidationApi({bool hub = true})
+      : super(HttpTransport(ApiConfig.forTest(baseUrl: 'http://fake')),
+            actionsPath: '/a', pendingPath: '/a/p', proposalsPath: hub ? '/p' : null);
+
+  List<PendingWrite> writes = [];
+  List<MemoryProposal> proposalList = [];
+  final List<(String, bool)> decisions = [];
+  final List<(String, String?)> approved = [];
+  final List<String> rejected = [];
+  Object? decideError;
+  Object? approveError;
+
+  @override
+  Future<List<PendingWrite>> actions() async => List.of(writes);
+
+  @override
+  Future<void> decide(String id, {required bool confirm}) async {
+    decisions.add((id, confirm));
+    if (decideError != null) throw decideError!;
+    writes.removeWhere((w) => w.id == id);
+  }
+
+  @override
+  Future<List<MemoryProposal>> proposals() async => hasMemory ? List.of(proposalList) : const [];
+
+  @override
+  Future<void> approve(String id, {String? text}) async {
+    approved.add((id, text));
+    if (approveError != null) throw approveError!;
+    proposalList.removeWhere((p) => p.id == id);
+  }
+
+  @override
+  Future<void> reject(String id) async {
+    rejected.add(id);
+    proposalList.removeWhere((p) => p.id == id);
+  }
+}
+
+class FakeBackend extends BackendClient {
+  FakeBackend({this.digest = '', this.digestError, AssistantIdentity? identity})
+      : identity = identity ?? const AssistantIdentity(name: 'Natsume', isCompanion: true);
+
   final String digest;
   final Object? digestError;
   final AssistantIdentity identity;
@@ -125,17 +212,26 @@ class FakeBackend extends BackendClient {
   final FakeTopicApi topics = FakeTopicApi();
 
   @override
+  final FakeInboxApi inbox = FakeInboxApi();
+
+  @override
+  final FakeValidationApi validation = FakeValidationApi();
+
+  @override
   Future<AssistantIdentity> getIdentity() async => identity;
 
-  @override
-  Future<List<Alert>> getAlerts({int limit = 50, int offset = 0, bool? unread, String? source, String? priority}) async =>
-      alerts;
+  List<Alert> hubAlertList = [];
+  Object? hubAlertError;
+  final List<String> hubAlertsRead = [];
 
   @override
-  Future<void> markRead(String id) async {}
+  Future<List<Alert>> hubAlerts() async {
+    if (hubAlertError != null) throw hubAlertError!;
+    return List.of(hubAlertList);
+  }
 
   @override
-  Future<void> markAllRead() async {}
+  Future<void> markHubAlertRead(String id) async => hubAlertsRead.add(id);
 
   @override
   Future<String> getDigest() async {

@@ -1,6 +1,6 @@
 name: lunavaritia
 description: "Lun'Avaritia — mobile companion for the Lun ecosystem"
-version: 1.4.2+10
+version: 1.5.0+11
 publish_to: "none"
 
 environment:
@@ -36,7 +36,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  # The DA's typefaces (ADR-020 D5, DA2) — variable fonts, SIL Open Font License (licences beside them).
+  # The DA's typefaces — variable fonts, SIL Open Font License (licences beside them).
   assets:
     - assets/fonts/CormorantGaramond-OFL.txt
     - assets/fonts/Inter-OFL.txt

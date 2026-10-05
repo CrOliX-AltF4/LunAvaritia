@@ -1,6 +1,6 @@
 name: Release
 
-# One workflow per tag (ADR-020 M1): test, build the signed release APK, check its signature, publish it.
+# One workflow per tag: test, build the signed release APK, check its signature, publish it.
 # It replaces release.yml + build-apk.yml, which ran side by side on the same tag and shipped a debug APK
 # signed with a key regenerated on every run — no update could install over the previous one (live check C19).
 

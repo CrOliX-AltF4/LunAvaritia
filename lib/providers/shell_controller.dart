@@ -21,6 +21,22 @@ class BoxDestination extends Destination {
   const BoxDestination();
 }
 
+/// One item of the box, read in full (DA-M4) — from the box or from a tapped notification.
+class BoxItemDestination extends Destination {
+  const BoxItemDestination(this.key);
+  final String key;
+}
+
+/// Gmail's trash, from the box.
+class TrashDestination extends Destination {
+  const TrashDestination();
+}
+
+/// « À valider »: memory proposals and pending writes.
+class ValidateDestination extends Destination {
+  const ValidateDestination();
+}
+
 class ArchivedDestination extends Destination {
   const ArchivedDestination();
 }

@@ -3,13 +3,18 @@ import '../models/alert.dart';
 import '../models/assistant_identity.dart';
 import 'backend_client.dart';
 import 'http_transport.dart';
+import 'inbox_api.dart';
+import 'validation_api.dart';
 import 'topic_api.dart';
 
 /// The hub (Natsume Core) — its mobile façade under /api/mobile/*.
 class ApiService extends BackendClient {
   ApiService(ApiConfig config) : this._(HttpTransport(config));
 
-  ApiService._(this._http) : topics = TopicApi.hub(_http);
+  ApiService._(this._http)
+      : topics = TopicApi.hub(_http),
+        inbox = InboxApi.hub(_http),
+        validation = ValidationApi.hub(_http);
 
   final HttpTransport _http;
 
@@ -17,41 +22,34 @@ class ApiService extends BackendClient {
   final TopicApi topics;
 
   @override
+  final InboxApi inbox;
+
+  @override
+  final ValidationApi validation;
+
+  @override
   Future<AssistantIdentity> getIdentity() async =>
       AssistantIdentity.fromJson(asObject(await _http.get('/api/mobile/identity')));
 
-  // ── Alerts ────────────────────────────────────────────────────────────────
+  // ── The hub's own alerts ──────────────────────────────────────────────────
 
+  /// Its copies of box items carry a `sourceKey`: left out, the box shows the items themselves.
   @override
-  Future<List<Alert>> getAlerts({
-    int limit = 50,
-    int offset = 0,
-    bool? unread,
-    String? source,
-    String? priority,
-  }) async {
-    final q = StringBuffer('/api/mobile/alerts?limit=$limit&offset=$offset');
-    if (unread == true) q.write('&unread=true');
-    // source and priority filters not supported by the hub's mobile API — ignored
-    final data = asObject(await _http.get(q.toString()));
+  Future<List<Alert>> hubAlerts() async {
+    final data = asObject(await _http.get('/api/mobile/alerts?limit=100'));
     final items = data['alerts'] as List<dynamic>? ?? [];
-    return items.cast<Map<String, dynamic>>().map(Alert.fromJson).toList();
+    return items.cast<Map<String, dynamic>>().where((a) => a['sourceKey'] == null).map(Alert.fromJson).toList();
   }
 
   @override
-  Future<void> markRead(String id) async {
+  Future<void> markHubAlertRead(String id) async {
     await _http.post('/api/mobile/alerts/${Uri.encodeComponent(id)}/read', body: const {});
-  }
-
-  @override
-  Future<void> markAllRead() async {
-    await _http.post('/api/mobile/alerts/read-all', body: const {});
   }
 
   @override
   Future<String> getDigest() async {
     // /api/mobile/digest, not /api/proxy/acedia/digest — the latter isn't under /api/mobile/*,
-    // so a MOBILE_API_KEY-only caller (no panel session) got a silent 401 on it (ADR-013 I4).
+    // so a MOBILE_API_KEY-only caller (no panel session) got a silent 401 on it.
     final data = asObject(await _http.get('/api/mobile/digest', timeout: HttpTransport.chatTimeout));
     return data['response'] as String? ?? '';
   }

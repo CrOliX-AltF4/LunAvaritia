@@ -5,7 +5,7 @@ plugins {
     id "com.google.gms.google-services"
 }
 
-// Release signing (ADR-020 M1, live check C19). CI passes the keystore through environment variables (secrets
+// Release signing (live check C19). CI passes the keystore through environment variables (secrets
 // ANDROID_KEYSTORE_B64 / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS); a local build reads android/key.properties
 // (gitignored: storeFile, storePassword, keyAlias). PKCS12 keystore: the key password is the store password.
 // Without either, a release build is signed with the debug key and says so — release.yml refuses to publish that.

@@ -3,24 +3,29 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../providers/alert_provider.dart';
+import '../providers/box_controller.dart';
 import '../providers/identity_provider.dart';
 import '../providers/shell_controller.dart';
 import '../providers/topic_controller.dart';
 import '../providers/topics_provider.dart';
+import '../providers/validation_controller.dart';
 import '../services/backend_client.dart';
 import '../services/deep_link_router.dart';
 import '../services/digest_gate.dart';
 import '../services/update_checker.dart';
 import '../services/update_launcher.dart';
 import '../widgets/app_drawer.dart';
-import 'alert_feed_screen.dart';
 import 'archived_screen.dart';
+import 'box_reader_screen.dart';
+import 'box_screen.dart';
+import 'digest_sheet.dart';
 import 'home_screen.dart';
 import 'settings_screen.dart';
 import 'topic_screen.dart';
+import 'trash_screen.dart';
+import 'validate_screen.dart';
 
-/// One screen at a time and a drawer for the rest (DA1 « sujet + tiroir », ADR-020 §5.3) — no tabs.
+/// One screen at a time and a drawer for the rest (DA1 « sujet + tiroir ») — no tabs.
 class MainShell extends StatefulWidget {
   // Not const — deepLinkRouter's default falls back to DeepLinkRouter.instance, a runtime
   // singleton, which can't appear in a const constructor's initializer list.
@@ -43,10 +48,10 @@ class MainShell extends StatefulWidget {
   /// would otherwise leak pending state between widget tests.
   final DeepLinkRouter deepLinkRouter;
 
-  /// Overridable for tests — the real one asks GitHub (ADR-020 M1).
+  /// Overridable for tests — the real one asks GitHub.
   final UpdateChecker updateChecker;
 
-  /// This phone is not paired with the server it talks to, or still holds an old shared secret (ADR-020 M3).
+  /// This phone is not paired with the server it talks to, or still holds an old shared secret.
   final bool pairingNeeded;
 
   /// Wired to the hub — said in the drawer.
@@ -69,16 +74,18 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       // What the drawer and the home screen show: who answers, the topics, the box's counts.
       unawaited(context.read<IdentityProvider>().refresh());
       unawaited(context.read<TopicsProvider>().refresh());
-      unawaited(context.read<AlertProvider>().load());
+      unawaited(context.read<BoxController>().load());
+      unawaited(context.read<ValidationController>().load());
     });
     // Cold start counts as "waking" the app too, not just a foreground resume.
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowDigest());
     widget.deepLinkRouter.addListener(_onDeepLinkRequested);
+    widget.deepLinkRouter.boxNudges.addListener(_onBoxNudged);
     // A tap that launched the app cold (getInitialMessage) can fire before this widget
     // even exists — check for an already-pending request instead of only reacting to
     // the listener notification going forward.
     WidgetsBinding.instance.addPostFrameCallback((_) => _onDeepLinkRequested());
-    // Cold start only, never blocking: a new signed release is offered once per version (ADR-020 M1).
+    // Cold start only, never blocking: a new signed release is offered once per version.
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeOfferUpdate());
   }
 
@@ -86,6 +93,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     widget.deepLinkRouter.removeListener(_onDeepLinkRequested);
+    widget.deepLinkRouter.boxNudges.removeListener(_onBoxNudged);
     super.dispose();
   }
 
@@ -93,12 +101,29 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     final target = widget.deepLinkRouter.pending;
     if (target == null || !mounted) return;
     widget.deepLinkRouter.consume();
-    switch (target) {
-      case DeepLinkTarget.box:
-        context.read<ShellController>().go(const BoxDestination());
-        // The tapped notification is presumably the freshest thing there is.
-        unawaited(context.read<AlertProvider>().refresh());
+    if (target.validate) {
+      context.read<ShellController>().go(const ValidateDestination());
+      unawaited(context.read<ValidationController>().load());
+      return;
     }
+    final key = target.boxKey;
+    // The tapped notification is presumably the freshest thing there is: the box is read again either way.
+    final box = context.read<BoxController>();
+    if (key == null) {
+      context.read<ShellController>().go(const BoxDestination());
+      unawaited(box.load());
+      return;
+    }
+    // The reader looks the item up once the box is read; it says so if the item left the box since.
+    unawaited(box.load().then((_) {
+      if (mounted) context.read<ShellController>().go(BoxItemDestination(key));
+    }));
+  }
+
+  void _onBoxNudged() {
+    if (!mounted) return;
+    unawaited(context.read<BoxController>().load());
+    unawaited(context.read<ValidationController>().load());
   }
 
   @override
@@ -127,13 +152,13 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     if (!await widget.digestGate.shouldShow()) return;
     if (!mounted) return;
     try {
-      final digest = await context.read<AlertProvider>().fetchDigest();
+      final digest = await context.read<BoxController>().fetchDigest();
       // Mark shown on any successful fetch, even an empty digest — otherwise "nothing
       // happened" would retry on every resume until the gap naturally elapses on its own.
       await widget.digestGate.markShown();
       if (!mounted || digest.trim().isEmpty) return;
-      // Not awaited — see the identical note in AlertFeedScreen._showDigest(); nothing here
-      // depends on knowing when the sheet is dismissed.
+      // Not awaited — showModalBottomSheet()'s future resolves when the sheet is dismissed;
+      // nothing here depends on knowing that.
       unawaited(showDigestSheet(context, digest));
     } catch (_) {
       // Silent — an auto-trigger shouldn't nag on a transient/offline failure, and not
@@ -156,7 +181,10 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
             },
             child: const TopicScreen(),
           ),
-        BoxDestination() => const AlertFeedScreen(),
+        BoxDestination() => const BoxScreen(),
+        BoxItemDestination(:final key) => BoxReaderScreen(key: ValueKey('box-item-$key'), itemKey: key),
+        TrashDestination() => const TrashScreen(),
+        ValidateDestination() => const ValidateScreen(),
         ArchivedDestination() => const ArchivedScreen(),
         SettingsDestination() => widget.settings ?? const SettingsScreen(),
       };
@@ -168,10 +196,13 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     final showPairingBanner = widget.pairingNeeded && destination is! SettingsDestination;
 
     return PopScope(
-      // Back leads home first; from home, it leaves the app.
+      // Back leads home first — from an item or the trash, to the box; from home, it leaves the app.
       canPop: destination is HomeDestination,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) shell.go(const HomeDestination());
+        if (didPop) return;
+        shell.go(destination is BoxItemDestination || destination is TrashDestination
+            ? const BoxDestination()
+            : const HomeDestination());
       },
       child: Scaffold(
         key: shell.scaffoldKey,

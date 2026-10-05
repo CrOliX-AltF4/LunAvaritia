@@ -4,13 +4,14 @@ import '../models/topic.dart';
 import '../services/backend_client.dart';
 
 /// How long LunAcedia keeps an action waiting for the user — past that it is dropped, never executed.
+/// When an action carries no deadline: an older LunAcedia kept one 5 minutes (made it durable).
 const pendingActionLifetime = Duration(minutes: 5);
 
 /// Where an action waiting on the user stands on this phone.
 enum DecisionState { waiting, deciding, confirmed, cancelled, expired, failed }
 
 /// One open topic: its messages (paged from the server), a turn at a time, and the decisions on the actions its
-/// answers wait on (ADR-020 §5.8 (a): an action is settled where it appears).
+/// answers wait on (an action is settled where it appears).
 class TopicController extends ChangeNotifier {
   TopicController(this._api, this.topicId, {DateTime Function() now = DateTime.now, TurnResult? opened})
       : _now = now {
@@ -124,12 +125,12 @@ class TopicController extends ChangeNotifier {
     final id = action.id ?? '';
     final known = _decisions[id];
     if (known != null) return known;
-    if (_now().difference(message.at) >= pendingActionLifetime) return DecisionState.expired;
-    return DecisionState.waiting;
+    return remainingFor(message, action) > Duration.zero ? DecisionState.waiting : DecisionState.expired;
   }
 
-  /// How long LunAcedia still keeps this answer's actions waiting.
-  Duration remainingFor(TopicMessage message) => pendingActionLifetime - _now().difference(message.at);
+  /// How long LunAcedia still keeps this action waiting: until its own deadline, or 5 minutes from an older server.
+  Duration remainingFor(TopicMessage message, AgentAction action) =>
+      (action.expiresAt ?? message.at.add(pendingActionLifetime)).difference(_now());
 
   String? decisionErrorOf(AgentAction action) => _decisionErrors[action.id ?? ''];
 

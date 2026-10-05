@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../config/api_config.dart';
 import '../models/assistant_identity.dart';
 import '../services/app_version.dart';
 import '../services/backend_client.dart';
 import '../services/pairing.dart';
+import '../services/push_service.dart';
 import '../widgets/shell_widgets.dart';
 import '../services/update_checker.dart';
 import '../services/update_launcher.dart';
@@ -15,22 +18,36 @@ Future<AssistantIdentity> _probeServer(ApiConfig config) => buildBackendClient(c
 
 Future<UpdateStatus> _checkForUpdate() => UpdateChecker().check();
 
-/// LunAcedia first — it is the product (ADR-008). Wiring to a hub is an advanced, optional setting
-/// (ADR-020 D2, live check C20): no mode switch, and no assistant name written in the app.
+/// Sends the notification token to the server a config talks to — injectable so a widget test needs no Firebase.
+typedef RegisterPush = Future<void> Function(ApiConfig config);
+
+/// Takes the phone off LunAcedia's notifications when it moves to a hub — injectable for widget tests.
+typedef LeaveStandalonePush = Future<void> Function(ApiConfig lunacedia);
+
+/// LunAcedia first — it is the product. Wiring to a hub is an advanced, optional setting
+/// (live check C20): no mode switch, and no assistant name written in the app.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
     super.key,
     this.probe = _probeServer,
     this.checkUpdate = _checkForUpdate,
     this.pair = pairDevice,
+    this.registerPush = registerPushTokenWith,
+    this.leaveStandalonePush = leaveStandalonePushAt,
   });
 
   final IdentityProbe probe;
 
-  /// Pairs this phone with a server (ADR-020 M3) — injectable for widget tests.
+  /// Pairs this phone with a server — injectable for widget tests.
   final PairDevice pair;
 
-  /// Asks GitHub for a newer signed release (ADR-020 M1) — injectable for widget tests.
+  /// Registers for notifications right after a pairing, with the new device token (live check V3).
+  final RegisterPush registerPush;
+
+  /// Once, when the phone moves from LunAcedia to a hub: the hub sends the notifications from then on.
+  final LeaveStandalonePush leaveStandalonePush;
+
+  /// Asks GitHub for a newer signed release — injectable for widget tests.
   final Future<UpdateStatus> Function() checkUpdate;
 
   @override
@@ -43,6 +60,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _hubUrlCtrl      = TextEditingController();
   final _hubTokenCtrl    = TextEditingController();
   bool _loaded   = false;
+
+  /// Wired to a hub as last saved — moving to one takes the phone off LunAcedia's notifications.
+  bool _wasWired = false;
   bool _saving   = false;
   bool _testing  = false;
 
@@ -67,6 +87,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _acediaTokenCtrl.text = cfg.acediaToken;
       _hubUrlCtrl.text      = cfg.hubUrl;
       _hubTokenCtrl.text    = cfg.hubToken;
+      _wasWired             = cfg.wired;
       _loaded               = true;
     });
   }
@@ -163,12 +184,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       hubUrl:      _hubUrlCtrl.text,
       hubToken:    _hubTokenCtrl.text,
     );
+    _leaveStandaloneIfNowWired();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Paramètres sauvegardés — redémarrez l\'app')),
       );
       setState(() => _saving = false);
     }
+  }
+
+  void _leaveStandaloneIfNowWired() {
+    final now = _formConfig;
+    if (_wasWired || !now.wired) return;
+    _wasWired = true;
+    unawaited(widget.leaveStandalonePush(now.standalone));
   }
 
   InputDecoration _field(String label, IconData icon, {String? hint}) => InputDecoration(
@@ -181,7 +210,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   TextEditingController _urlOf(PairingTarget t) => t == PairingTarget.lunacedia ? _acediaUrlCtrl : _hubUrlCtrl;
   TextEditingController _tokenOf(PairingTarget t) => t == PairingTarget.lunacedia ? _acediaTokenCtrl : _hubTokenCtrl;
 
-  /// Where this phone stands with a server, and the way to pair it (ADR-020 M3). No secret is ever typed here.
+  /// Where this phone stands with a server, and the way to pair it. No secret is ever typed here.
   Widget _pairingRow(PairingTarget target) {
     final colors = Theme.of(context).colorScheme;
     final state = pairingStateOf(_tokenOf(target).text);
@@ -219,7 +248,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (_) => _PairDialog(target: target, url: url, pair: widget.pair),
     );
     if (token == null || !mounted) return;
-    // The device token replaces whatever was stored — an old master secret included (ADR-020 M3).
+    // The device token replaces whatever was stored — an old master secret included.
     setState(() => _tokenOf(target).text = token);
     await ApiConfig.save(
       acediaUrl:   _acediaUrlCtrl.text,
@@ -227,6 +256,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       hubUrl:      _hubUrlCtrl.text,
       hubToken:    _hubTokenCtrl.text,
     );
+    _leaveStandaloneIfNowWired();
+    // The server the app talks to now — the hub when wired, even if it is LunAcedia that was just paired.
+    unawaited(ApiConfig.load().then(widget.registerPush));
     messenger.showSnackBar(const SnackBar(content: Text("Appareil appairé — redémarrez l'app")));
   }
 

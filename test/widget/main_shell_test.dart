@@ -3,7 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:lunavaritia/providers/alert_provider.dart';
+import 'package:lunavaritia/models/box_item.dart';
+import 'package:lunavaritia/services/validation_api.dart';
+import 'package:lunavaritia/providers/box_controller.dart';
+import 'package:lunavaritia/providers/validation_controller.dart';
 import 'package:lunavaritia/providers/identity_provider.dart';
 import 'package:lunavaritia/providers/shell_controller.dart';
 import 'package:lunavaritia/providers/topics_provider.dart';
@@ -33,7 +36,8 @@ Widget _buildShell(
       ChangeNotifierProvider(create: (_) => shell ?? ShellController()),
       ChangeNotifierProvider(create: (_) => IdentityProvider(backend)),
       ChangeNotifierProvider(create: (_) => TopicsProvider(backend)),
-      ChangeNotifierProvider(create: (_) => AlertProvider(backend)),
+      ChangeNotifierProvider(create: (_) => BoxController(backend)),
+      ChangeNotifierProvider(create: (_) => ValidationController(backend)),
     ],
     child: MaterialApp(
       theme: buildAppTheme(),
@@ -100,11 +104,76 @@ void main() {
     });
   });
 
+  group('MainShell — a tapped notification opens what it announces', () {
+    testWidgets('the box item, read in full; back leads to the box', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final backend = FakeBackend();
+      backend.inbox.items = [
+        BoxItem.fromJson({'dedupeKey': 'email-7', 'source': 'email', 'title': 'Facture', 'priority': 'normal', 'ts': 1}),
+      ];
+      backend.inbox.openBody = 'Le texte entier.';
+      final router = DeepLinkRouter.instance..consume();
+      final shell = ShellController();
+      await tester.pumpWidget(_buildShell(backend, shell: shell, deepLinkRouter: router));
+      await tester.pumpAndSettle();
+
+      router.request(const DeepLinkTarget.box(boxKey: 'email-7'));
+      await tester.pumpAndSettle();
+      expect((shell.current as BoxItemDestination).key, 'email-7');
+      expect(find.text('Le texte entier.'), findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(shell.current, isA<BoxDestination>());
+    });
+
+    testWidgets('a notification arriving with the app open reads the box again', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final backend = FakeBackend();
+      final router = DeepLinkRouter.instance..consume();
+      final shell = ShellController(initial: const BoxDestination());
+      await tester.pumpWidget(_buildShell(backend, shell: shell, deepLinkRouter: router));
+      await tester.pumpAndSettle();
+      expect(find.text('Nouveau mail'), findsNothing);
+
+      backend.inbox.items = [
+        BoxItem.fromJson({'dedupeKey': 'email-8', 'source': 'email', 'title': 'Nouveau mail', 'priority': 'normal', 'ts': 1}),
+      ];
+      router.nudgeBox();
+      await tester.pumpAndSettle();
+      expect(find.text('Nouveau mail'), findsOneWidget);
+    });
+  });
+
+  group('MainShell — « Action à valider »', () {
+    testWidgets('a pending-write notification opens « À valider », listed in the drawer with its count', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final backend = FakeBackend();
+      backend.validation.writes = [
+        PendingWrite(id: 'a1', summary: 'Répondre à un mail — Noté.', connector: 'Gmail', createdAt: DateTime.now()),
+      ];
+      final router = DeepLinkRouter.instance..consume();
+      final shell = ShellController();
+      await tester.pumpWidget(_buildShell(backend, shell: shell, deepLinkRouter: router));
+      await tester.pumpAndSettle();
+
+      router.request(const DeepLinkTarget.validate());
+      await tester.pumpAndSettle();
+      expect(shell.current, isA<ValidateDestination>());
+      expect(find.text('Répondre à un mail — Noté.'), findsOneWidget);
+
+      shell.openDrawer();
+      await tester.pumpAndSettle();
+      expect(find.text('À valider'), findsWidgets);
+      expect(find.text('1'), findsWidgets);
+    });
+  });
+
   group('MainShell — a tapped notification opens the box', () {
     testWidgets('when it is already pending on first build', (tester) async {
       SharedPreferences.setMockInitialValues({});
       final router = DeepLinkRouter.instance..consume();
-      router.request(DeepLinkTarget.box);
+      router.request(const DeepLinkTarget.box());
       final shell = ShellController();
 
       await tester.pumpWidget(_buildShell(FakeBackend(), shell: shell, deepLinkRouter: router));
@@ -123,7 +192,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(shell.current, isA<HomeDestination>());
 
-      router.request(DeepLinkTarget.box);
+      router.request(const DeepLinkTarget.box());
       await tester.pumpAndSettle();
 
       expect(shell.current, isA<BoxDestination>());
@@ -216,7 +285,7 @@ void main() {
     });
   });
 
-  group('MainShell — pairing banner (ADR-020 M3)', () {
+  group('MainShell — pairing banner', () {
     testWidgets('says the phone is not paired and leads to the settings', (tester) async {
       SharedPreferences.setMockInitialValues({});
       await tester.pumpWidget(_buildShell(FakeBackend(), pairingNeeded: true));
@@ -237,7 +306,7 @@ void main() {
     });
   });
 
-  group('MainShell — update on launch (ADR-020 M1)', () {
+  group('MainShell — update on launch', () {
     const available = UpdateAvailable(AvailableUpdate(version: '1.4.0', downloadUrl: 'https://x/app.apk'));
 
     testWidgets('offers a newer release once, with a download action', (tester) async {

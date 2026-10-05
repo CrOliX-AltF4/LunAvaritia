@@ -4,7 +4,7 @@ import '../models/topic.dart';
 import '../services/backend_client.dart';
 
 /// The list of topics (drawer) and the gestures on a topic: open, rename, archive, delete. All stored by the
-/// server — the app keeps nothing of its own (ADR-020 amendment 1).
+/// server — the app keeps nothing of its own.
 class TopicsProvider extends ChangeNotifier {
   TopicsProvider(this._api);
 

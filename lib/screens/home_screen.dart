@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../models/alert.dart';
-import '../providers/alert_provider.dart';
+import '../providers/box_controller.dart';
 import '../providers/identity_provider.dart';
 import '../providers/shell_controller.dart';
 import '../providers/topics_provider.dart';
@@ -63,10 +62,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final identity = context.watch<IdentityProvider>().identity;
-    final alerts = context.watch<AlertProvider>();
+    final box = context.watch<BoxController>();
     final topics = context.watch<TopicsProvider>().topics;
     final text = Theme.of(context).textTheme;
-    final urgent = alerts.unreadAlerts.where((a) => a.priority == AlertPriority.urgent).length;
+    final urgent = box.urgentUnreadCount;
     final greeting = widget.now().hour < 18 ? 'Bonjour.' : 'Bonsoir.';
     final shell = context.read<ShellController>();
 
@@ -99,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       icon: Icons.inbox_outlined,
                       label: 'Boîte',
                       urgent: urgent,
-                      count: alerts.unreadCount,
+                      count: box.unreadCount,
                       onTap: () => shell.go(const BoxDestination()),
                     ),
                     if (topics.isNotEmpty)

@@ -13,7 +13,7 @@ import 'package:lunavaritia/theme/app_theme.dart';
 
 import '../support/fakes.dart';
 
-// ADR-020 S4 — the topic in progress: what an answer cites, and the actions settled where they appear (§5.8 (a)).
+// The topic in progress: what an answer cites, and the actions settled where they appear.
 
 const _reply = AgentAction(
   kind: 'reply',
@@ -77,6 +77,22 @@ void main() {
     expect(find.textContaining('Expiré'), findsOneWidget);
   });
 
+  // LunAcedia's list is durable: an action lives until the deadline it carries, not 5 minutes.
+  testWidgets('keeps an action decidable until the deadline LunAcedia gave it', (tester) async {
+    final until = DateTime.now().add(const Duration(minutes: 90));
+    await _pump(tester, [
+      answer('m2', 'Voici.', when: at(30), agent: _outcome(actions: [
+        AgentAction.fromJson({
+          'kind': 'reply', 'status': 'pending', 'id': 'act-1', 'connector': 'gmail',
+          'action': {'kind': 'reply', 'sourceId': 'm1', 'body': 'Noté.'},
+          'expiresAt': until.millisecondsSinceEpoch,
+        }),
+      ])),
+    ]);
+    expect(find.text('Confirmer'), findsOneWidget);
+    expect(find.textContaining('expire dans 1 h'), findsOneWidget);
+  });
+
   testWidgets('says the action expired when the server answers it is gone', (tester) async {
     await _pump(tester, [answer('m2', 'Voici.', agent: _outcome(actions: [_reply]))]);
     final api = (tester.element(find.byType(TopicScreen)).read<BackendClient>() as FakeBackend).topics;
@@ -92,7 +108,7 @@ void main() {
         const AgentAction(kind: 'propose_memory', status: 'pending', id: 'p1', connector: 'memory', fields: {'text': 'Le syndic écrit par mail.'}),
       ])),
     ]);
-    expect(find.text('Proposé pour la mémoire — à valider dans le panel.'), findsOneWidget);
+    expect(find.text('Proposé pour la mémoire — à retenir dans « À valider ».'), findsOneWidget);
     expect(find.text('Confirmer'), findsNothing);
   });
 

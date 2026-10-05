@@ -2,7 +2,7 @@ import '../config/api_config.dart';
 import 'backend_error.dart';
 import 'http_transport.dart';
 
-/// Pairing this phone (ADR-020 M3): the server gives it its own token — limited to the mobile routes, revocable — in
+/// Pairing this phone: the server gives it its own token — limited to the mobile routes, revocable — in
 /// exchange for a one-time code shown in LunAcedia's dashboard or the hub's panel. The phone never holds a master
 /// secret any more.
 

@@ -8,7 +8,7 @@ import 'package:lunavaritia/config/api_config.dart';
 import 'package:lunavaritia/services/http_transport.dart';
 import 'package:lunavaritia/services/topic_api.dart';
 
-// ADR-020 amendment 1 — one client for the topics contract: LunAcedia's paths standalone, the hub's when wired.
+// One client for the topics contract: LunAcedia's paths standalone, the hub's when wired.
 
 Map<String, dynamic> _turn({Map<String, dynamic>? agent}) => {
       'conversation': {

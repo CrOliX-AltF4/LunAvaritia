@@ -14,35 +14,45 @@ void main() {
       var notified = false;
       router.addListener(() => notified = true);
 
-      router.request(DeepLinkTarget.box);
+      router.request(const DeepLinkTarget.box(boxKey: 'email-1'));
 
-      expect(router.pending, DeepLinkTarget.box);
+      expect(router.pending?.boxKey, 'email-1');
       expect(notified, isTrue);
       router.consume();
     });
 
     test('consume clears pending', () {
       final router = DeepLinkRouter.instance;
-      router.request(DeepLinkTarget.box);
+      router.request(const DeepLinkTarget.box());
       router.consume();
       expect(router.pending, isNull);
     });
+
+    test('a nudge tells the box to read itself again', () {
+      final router = DeepLinkRouter.instance;
+      final before = router.boxNudges.value;
+      router.nudgeBox();
+      expect(router.boxNudges.value, before + 1);
+    });
   });
 
+  // ADR-020 §5.10 M4c — a notification opens the item it announces, read in full; the box when it announces nothing in it.
   group('resolveDeepLinkTarget', () {
-    test("routes the hub's payload (alertId/source/key) to the box", () {
-      expect(resolveDeepLinkTarget({'alertId': 'a1', 'source': 'email', 'key': 'email-1'}), DeepLinkTarget.box);
+    test("the hub's payload: its alert's box item (key)", () {
+      expect(resolveDeepLinkTarget({'alertId': 'a1', 'source': 'email', 'key': 'email-1'}).boxKey, 'email-1');
     });
 
-    test("routes LunAcedia's payload (type/source/dedupeKey/priority) to the box", () {
+    test("LunAcedia's payload: the item's dedupeKey", () {
       expect(
-        resolveDeepLinkTarget({'type': 'email.new', 'source': 'gmail', 'dedupeKey': 'gmail-123', 'priority': 'urgent'}),
-        DeepLinkTarget.box,
+        resolveDeepLinkTarget(
+            {'type': 'email.received', 'source': 'email', 'dedupeKey': 'email-123', 'priority': 'urgent'}).boxKey,
+        'email-123',
       );
     });
 
-    test('routes an empty/unknown payload to the box too (only destination today)', () {
-      expect(resolveDeepLinkTarget({}), DeepLinkTarget.box);
+    test('a hub alert about nothing in the box, or an unknown payload: the box', () {
+      expect(resolveDeepLinkTarget({'alertId': 'a1', 'source': 'system'}).boxKey, isNull);
+      expect(resolveDeepLinkTarget({}).boxKey, isNull);
     });
   });
 }

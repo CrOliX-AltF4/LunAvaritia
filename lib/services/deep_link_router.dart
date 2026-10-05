@@ -1,8 +1,13 @@
 import 'package:flutter/foundation.dart';
 
-/// Where a tapped notification leads. Every push both servers send today announces an element of the box (a mail,
-/// an event, a GitHub notification), so it opens the box; "Traiter" there opens a topic about it (ADR-020 S4).
-enum DeepLinkTarget { box }
+/// Where a tapped notification leads (ADR-020 §5.10 M4c): the box item it announces, read in full — or the box when the
+/// notification is about nothing in it (a hub alert, a spend alert).
+class DeepLinkTarget {
+  const DeepLinkTarget.box({this.boxKey});
+
+  /// The box item; null opens the box itself.
+  final String? boxKey;
+}
 
 /// Global, minimal channel for "go there" requests that originate outside the widget tree — a tapped push
 /// notification, today the only source. MainShell listens; PushService writes.
@@ -14,6 +19,11 @@ class DeepLinkRouter extends ChangeNotifier {
   static final instance = DeepLinkRouter._();
 
   DeepLinkTarget? _pending;
+
+  /// Bumped when a notification arrives with the app open: the box may have changed, worth reading again.
+  final boxNudges = ValueNotifier<int>(0);
+
+  void nudgeBox() => boxNudges.value++;
   DeepLinkTarget? get pending => _pending;
 
   void request(DeepLinkTarget target) {
@@ -27,6 +37,8 @@ class DeepLinkRouter extends ChangeNotifier {
   }
 }
 
-/// Both servers' pushes are box elements: LunAcedia sends `dedupeKey`, the hub `alertId` (+ `key` when the alert is
-/// about a box item). Kept as its own function so "there is only one destination today" is one greppable place.
-DeepLinkTarget resolveDeepLinkTarget(Map<String, dynamic> data) => DeepLinkTarget.box;
+/// LunAcedia's push carries the item's `dedupeKey`; the hub's carries `key` when its alert is about a box item.
+DeepLinkTarget resolveDeepLinkTarget(Map<String, dynamic> data) {
+  final key = data['key'] ?? data['dedupeKey'];
+  return DeepLinkTarget.box(boxKey: key is String && key.isNotEmpty ? key : null);
+}

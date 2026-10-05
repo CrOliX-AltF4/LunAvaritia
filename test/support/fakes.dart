@@ -122,10 +122,14 @@ class FakeInboxApi extends InboxApi {
   final List<(String, BoxGesture)> gestures = [];
   final List<String> restored = [];
   Object? gestureError;
+  Object? listError;
   String openBody = '';
 
   @override
-  Future<BoxPage> list() async => BoxPage(items: List.of(items), unread: items.where((i) => !i.read).length);
+  Future<BoxPage> list() async {
+    if (listError != null) throw listError!;
+    return BoxPage(items: List.of(items), unread: items.where((i) => !i.read).length);
+  }
 
   @override
   Future<GestureResult> gesture(String key, BoxGesture gesture) async {
@@ -155,11 +159,9 @@ class FakeInboxApi extends InboxApi {
 }
 
 class FakeBackend extends BackendClient {
-  FakeBackend({List<Alert>? alerts, this.digest = '', this.digestError, AssistantIdentity? identity})
-      : alerts = alerts ?? [],
-        identity = identity ?? const AssistantIdentity(name: 'Natsume', isCompanion: true);
+  FakeBackend({this.digest = '', this.digestError, AssistantIdentity? identity})
+      : identity = identity ?? const AssistantIdentity(name: 'Natsume', isCompanion: true);
 
-  final List<Alert> alerts;
   final String digest;
   final Object? digestError;
   final AssistantIdentity identity;
@@ -173,15 +175,18 @@ class FakeBackend extends BackendClient {
   @override
   Future<AssistantIdentity> getIdentity() async => identity;
 
-  @override
-  Future<List<Alert>> getAlerts({int limit = 50, int offset = 0, bool? unread, String? source, String? priority}) async =>
-      alerts;
+  List<Alert> hubAlertList = [];
+  Object? hubAlertError;
+  final List<String> hubAlertsRead = [];
 
   @override
-  Future<void> markRead(String id) async {}
+  Future<List<Alert>> hubAlerts() async {
+    if (hubAlertError != null) throw hubAlertError!;
+    return List.of(hubAlertList);
+  }
 
   @override
-  Future<void> markAllRead() async {}
+  Future<void> markHubAlertRead(String id) async => hubAlertsRead.add(id);
 
   @override
   Future<String> getDigest() async {

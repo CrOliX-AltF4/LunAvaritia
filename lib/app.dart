@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'config/api_config.dart';
-import 'providers/alert_provider.dart';
+import 'providers/box_controller.dart';
 import 'providers/identity_provider.dart';
 import 'providers/shell_controller.dart';
 import 'providers/topics_provider.dart';
@@ -25,7 +25,7 @@ class LunAvaritiaApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ShellController()),
         ChangeNotifierProvider(create: (_) => IdentityProvider(client)),
         ChangeNotifierProvider(create: (_) => TopicsProvider(client)),
-        ChangeNotifierProvider(create: (_) => AlertProvider(client)),
+        ChangeNotifierProvider(create: (_) => BoxController(client)),
       ],
       child: MaterialApp(
         title: "Lun'Avaritia",

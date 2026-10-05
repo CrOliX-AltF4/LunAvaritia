@@ -6,23 +6,6 @@ import 'http_transport.dart';
 import 'inbox_api.dart';
 import 'topic_api.dart';
 
-/// Maps a raw LunAcedia event (GET /api/events) to the shared Alert model.
-/// Top-level and pure so it's testable without any HTTP plumbing (ADR-013 I4).
-Alert eventToAlert(Map<String, dynamic> e) => Alert.fromJson({
-      'id': e['dedupeKey'],
-      'type': e['type'],
-      'title': e['title'],
-      'priority': e['priority'],
-      'ts': e['ts'],
-      // LunAcedia's own read status, not hardcoded false — an already-read alert must not
-      // come back as unread on the next fetch (ADR-013 I4, real bug found reading the code).
-      'read': e['read'] ?? false,
-      'body': e['body'],
-      'url': e['url'],
-      // The box item it is: what "Traiter" opens a topic about.
-      'sourceKey': e['dedupeKey'],
-    });
-
 /// LunAcedia on its own (standalone mode).
 class LunAcediaClient extends BackendClient {
   LunAcediaClient(ApiConfig config) : this._(HttpTransport(config));
@@ -43,34 +26,13 @@ class LunAcediaClient extends BackendClient {
   Future<AssistantIdentity> getIdentity() async =>
       AssistantIdentity.fromJson(asObject(await _http.get('/api/identity')));
 
-  // ── Events → Alerts ───────────────────────────────────────────────────────
+  // ── No hub, no hub alerts ─────────────────────────────────────────────────
 
   @override
-  Future<List<Alert>> getAlerts({
-    int limit = 50,
-    int offset = 0,
-    bool? unread,
-    String? source,
-    String? priority,
-  }) async {
-    final q = StringBuffer('/api/events?limit=$limit&offset=$offset');
-    if (unread == true) q.write('&unread=true');
-    if (source != null) q.write('&source=$source');
-    if (priority != null) q.write('&priority=$priority');
-    final data = asObject(await _http.get(q.toString()));
-    final items = data['events'] as List<dynamic>? ?? [];
-    return items.cast<Map<String, dynamic>>().map(eventToAlert).toList();
-  }
+  Future<List<Alert>> hubAlerts() async => const [];
 
   @override
-  Future<void> markRead(String id) async {
-    await _http.post('/api/events/${Uri.encodeComponent(id)}/read');
-  }
-
-  @override
-  Future<void> markAllRead() async {
-    await _http.post('/api/events/read-all');
-  }
+  Future<void> markHubAlertRead(String id) async {}
 
   @override
   Future<String> getDigest() async {

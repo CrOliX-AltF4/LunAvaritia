@@ -26,32 +26,19 @@ class ApiService extends BackendClient {
   Future<AssistantIdentity> getIdentity() async =>
       AssistantIdentity.fromJson(asObject(await _http.get('/api/mobile/identity')));
 
-  // ── Alerts ────────────────────────────────────────────────────────────────
+  // ── The hub's own alerts ──────────────────────────────────────────────────
 
+  /// Its copies of box items carry a `sourceKey`: left out, the box shows the items themselves (ADR-020 §5.10).
   @override
-  Future<List<Alert>> getAlerts({
-    int limit = 50,
-    int offset = 0,
-    bool? unread,
-    String? source,
-    String? priority,
-  }) async {
-    final q = StringBuffer('/api/mobile/alerts?limit=$limit&offset=$offset');
-    if (unread == true) q.write('&unread=true');
-    // source and priority filters not supported by the hub's mobile API — ignored
-    final data = asObject(await _http.get(q.toString()));
+  Future<List<Alert>> hubAlerts() async {
+    final data = asObject(await _http.get('/api/mobile/alerts?limit=100'));
     final items = data['alerts'] as List<dynamic>? ?? [];
-    return items.cast<Map<String, dynamic>>().map(Alert.fromJson).toList();
+    return items.cast<Map<String, dynamic>>().where((a) => a['sourceKey'] == null).map(Alert.fromJson).toList();
   }
 
   @override
-  Future<void> markRead(String id) async {
+  Future<void> markHubAlertRead(String id) async {
     await _http.post('/api/mobile/alerts/${Uri.encodeComponent(id)}/read', body: const {});
-  }
-
-  @override
-  Future<void> markAllRead() async {
-    await _http.post('/api/mobile/alerts/read-all', body: const {});
   }
 
   @override

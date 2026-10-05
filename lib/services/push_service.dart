@@ -84,6 +84,8 @@ class PushService {
 
     // Foreground message display
     FirebaseMessaging.onMessage.listen((message) {
+      // The app is open: the box may have changed (ADR-020 §5.10 M4c).
+      DeepLinkRouter.instance.nudgeBox();
       final notification = message.notification;
       final android = message.notification?.android;
       if (notification != null && android != null) {

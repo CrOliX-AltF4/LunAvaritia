@@ -3,7 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:lunavaritia/providers/alert_provider.dart';
+import 'package:lunavaritia/models/box_item.dart';
+import 'package:lunavaritia/providers/box_controller.dart';
 import 'package:lunavaritia/providers/identity_provider.dart';
 import 'package:lunavaritia/providers/shell_controller.dart';
 import 'package:lunavaritia/providers/topics_provider.dart';
@@ -33,7 +34,7 @@ Widget _buildShell(
       ChangeNotifierProvider(create: (_) => shell ?? ShellController()),
       ChangeNotifierProvider(create: (_) => IdentityProvider(backend)),
       ChangeNotifierProvider(create: (_) => TopicsProvider(backend)),
-      ChangeNotifierProvider(create: (_) => AlertProvider(backend)),
+      ChangeNotifierProvider(create: (_) => BoxController(backend)),
     ],
     child: MaterialApp(
       theme: buildAppTheme(),
@@ -100,11 +101,52 @@ void main() {
     });
   });
 
+  group('MainShell — a tapped notification opens what it announces (ADR-020 §5.10 M4c)', () {
+    testWidgets('the box item, read in full; back leads to the box', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final backend = FakeBackend();
+      backend.inbox.items = [
+        BoxItem.fromJson({'dedupeKey': 'email-7', 'source': 'email', 'title': 'Facture', 'priority': 'normal', 'ts': 1}),
+      ];
+      backend.inbox.openBody = 'Le texte entier.';
+      final router = DeepLinkRouter.instance..consume();
+      final shell = ShellController();
+      await tester.pumpWidget(_buildShell(backend, shell: shell, deepLinkRouter: router));
+      await tester.pumpAndSettle();
+
+      router.request(const DeepLinkTarget.box(boxKey: 'email-7'));
+      await tester.pumpAndSettle();
+      expect((shell.current as BoxItemDestination).key, 'email-7');
+      expect(find.text('Le texte entier.'), findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(shell.current, isA<BoxDestination>());
+    });
+
+    testWidgets('a notification arriving with the app open reads the box again', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final backend = FakeBackend();
+      final router = DeepLinkRouter.instance..consume();
+      final shell = ShellController(initial: const BoxDestination());
+      await tester.pumpWidget(_buildShell(backend, shell: shell, deepLinkRouter: router));
+      await tester.pumpAndSettle();
+      expect(find.text('Nouveau mail'), findsNothing);
+
+      backend.inbox.items = [
+        BoxItem.fromJson({'dedupeKey': 'email-8', 'source': 'email', 'title': 'Nouveau mail', 'priority': 'normal', 'ts': 1}),
+      ];
+      router.nudgeBox();
+      await tester.pumpAndSettle();
+      expect(find.text('Nouveau mail'), findsOneWidget);
+    });
+  });
+
   group('MainShell — a tapped notification opens the box', () {
     testWidgets('when it is already pending on first build', (tester) async {
       SharedPreferences.setMockInitialValues({});
       final router = DeepLinkRouter.instance..consume();
-      router.request(DeepLinkTarget.box);
+      router.request(const DeepLinkTarget.box());
       final shell = ShellController();
 
       await tester.pumpWidget(_buildShell(FakeBackend(), shell: shell, deepLinkRouter: router));
@@ -123,7 +165,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(shell.current, isA<HomeDestination>());
 
-      router.request(DeepLinkTarget.box);
+      router.request(const DeepLinkTarget.box());
       await tester.pumpAndSettle();
 
       expect(shell.current, isA<BoxDestination>());

@@ -17,15 +17,9 @@ abstract class BackendClient {
 
   /// Who answers — name and whether it is the hub's companion (ADR-020 D2). Also the connection test.
   Future<AssistantIdentity> getIdentity();
-  Future<List<Alert>> getAlerts({
-    int limit = 50,
-    int offset = 0,
-    bool? unread,
-    String? source,
-    String? priority,
-  });
-  Future<void> markRead(String id);
-  Future<void> markAllRead();
+  /// The hub's own alerts (system, spend, Discord) — never its copies of box items. Empty on LunAcedia.
+  Future<List<Alert>> hubAlerts();
+  Future<void> markHubAlertRead(String id);
   Future<String> getDigest();
   Future<void> registerPushToken(String token);
 }

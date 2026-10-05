@@ -7,7 +7,7 @@ import 'package:lunavaritia/services/backend_error.dart';
 
 import '../support/fakes.dart';
 
-// ADR-020 §5.10 M4c — the box on the phone: LunAcedia's items, gestures at the source, the hub's own alerts apart.
+// The box on the phone: LunAcedia's items, gestures at the source, the hub's own alerts apart.
 
 BoxItem item(String key, {String source = 'email', String priority = 'normal', bool read = false, int ts = 1}) =>
     BoxItem.fromJson({

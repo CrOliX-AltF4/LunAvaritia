@@ -14,7 +14,7 @@ import 'package:lunavaritia/theme/app_theme.dart';
 
 import '../support/fakes.dart';
 
-// ADR-020 §5.10 M4c, maquettes DA-M4 — the box, the reader, the trash.
+// The box, the reader, the trash.
 
 BoxItem item(String key, {String source = 'email', String priority = 'normal', String? title, String? from}) =>
     BoxItem.fromJson({

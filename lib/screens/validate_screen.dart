@@ -9,7 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/shell_widgets.dart';
 import 'topic_screen.dart' show expiresIn;
 
-/// « À valider » (maquette DA1, ADR-020 §5.11 M5d): the hub's memory proposals (wired) — Retenir, Modifier, Écarter —
+/// « À valider » (maquette DA1): the hub's memory proposals (wired) — Retenir, Modifier, Écarter —
 /// and LunAcedia's pending writes — Confirmer, Annuler — each with what it would do and when it expires.
 class ValidateScreen extends StatefulWidget {
   const ValidateScreen({super.key});

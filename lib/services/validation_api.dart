@@ -1,6 +1,6 @@
 import 'http_transport.dart';
 
-/// A write waiting for Master on LunAcedia (ADR-020 §5.11) — durable, with its own deadline.
+/// A write waiting for Master on LunAcedia — durable, with its own deadline.
 class PendingWrite {
   PendingWrite({
     required this.id,
@@ -68,7 +68,7 @@ class MemoryProposal {
   }
 }
 
-/// « À valider » (ADR-020 §5.11 M5d): LunAcedia's pending writes in both modes — on LunAcedia directly, or relayed by
+/// « À valider »: LunAcedia's pending writes in both modes — on LunAcedia directly, or relayed by
 /// the hub — and, wired only, the hub's memory proposals (standalone has no long memory, D8).
 class ValidationApi {
   ValidationApi(this._http, {required this.actionsPath, required this.pendingPath, this.proposalsPath});
@@ -118,7 +118,7 @@ class ValidationApi {
     ]..sort((a, b) => a.ts.compareTo(b.ts));
   }
 
-  /// Kept — in Master's own words when [text] is given (« Modifier », §5.11 Q3).
+  /// Kept — in Master's own words when [text] is given (« Modifier »).
   Future<void> approve(String id, {String? text}) async {
     final body = text != null && text.trim().isNotEmpty ? {'text': text} : null;
     await _http.post('$proposalsPath/${Uri.encodeComponent(id)}/approve', body: body);

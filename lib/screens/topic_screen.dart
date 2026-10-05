@@ -319,7 +319,7 @@ Future<void> _showItem(BuildContext context, CitedItem item) {
   );
 }
 
-/// An action the agent did or proposes. One waiting on the user is settled right here (ADR-020 §5.8 (a)).
+/// An action the agent did or proposes. One waiting on the user is settled right here.
 class ActionCard extends StatelessWidget {
   const ActionCard({super.key, required this.message, required this.action});
 
@@ -415,7 +415,7 @@ class ActionCard extends StatelessWidget {
   }
 }
 
-/// « moins d'une minute », « 12 min », « 1 h 30 », « 23 h » — a pending write may wait up to a day (ADR-020 §5.11).
+/// « moins d'une minute », « 12 min », « 1 h 30 », « 23 h » — a pending write may wait up to a day.
 String expiresIn(Duration left) {
   if (left.inMinutes < 1) return "moins d'une minute";
   if (left.inHours < 1) return '${left.inMinutes} min';

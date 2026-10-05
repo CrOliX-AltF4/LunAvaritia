@@ -1,6 +1,6 @@
-/// Who the app is talking to — given by the server, never written in the app (ADR-020 D2, live check C20:
-/// "Natsume" showed in standalone too). Standalone: LunAcedia's assistant (`GET /api/identity`). Wired to the
-/// hub: the Core's character (`GET /api/mobile/identity`), a companion with a mood of her own.
+/// Who the app is talking to — given by the server, never written in the app
+/// (a name written in the app showed in standalone too). Standalone: LunAcedia's assistant
+/// (`GET /api/identity`). Wired to the hub: the Core's character (`GET /api/mobile/identity`), a companion with a mood of her own.
 class AssistantIdentity {
   const AssistantIdentity({required this.name, required this.isCompanion});
 

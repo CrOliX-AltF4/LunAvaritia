@@ -23,7 +23,7 @@ Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
   // Background messages are shown automatically by FCM on Android
 }
 
-/// Takes this phone off LunAcedia's notifications as it moves to a hub (ADR-020 §5.10 Q4): wired, the hub sends them,
+/// Takes this phone off LunAcedia's notifications as it moves to a hub: wired, the hub sends them,
 /// LunAcedia's included — otherwise every notification would come twice. The last direct call to LunAcedia; best effort.
 Future<void> leaveStandalonePushAt(ApiConfig lunacedia) async {
   if (lunacedia.baseUrl.isEmpty || lunacedia.token.isEmpty) return;
@@ -84,7 +84,7 @@ class PushService {
 
     // Foreground message display
     FirebaseMessaging.onMessage.listen((message) {
-      // The app is open: the box may have changed (ADR-020 §5.10 M4c).
+      // The app is open: the box may have changed.
       DeepLinkRouter.instance.nudgeBox();
       final notification = message.notification;
       final android = message.notification?.android;

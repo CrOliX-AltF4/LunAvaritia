@@ -7,7 +7,7 @@ import '../services/backend_client.dart';
 /// Chips of the box (DA1): every source, or one.
 enum BoxFilter { all, email, calendar, github, tasks }
 
-/// The box on the phone (ADR-018, ADR-020 §5.10 M4c): LunAcedia holds it, every gesture acts at the source and the
+/// The box on the phone: LunAcedia holds it, every gesture acts at the source and the
 /// list adopts what the source answered — nothing is removed on a guess. Wired, the hub's own alerts sit apart.
 class BoxController extends ChangeNotifier {
   BoxController(this._api);

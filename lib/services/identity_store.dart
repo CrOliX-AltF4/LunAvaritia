@@ -6,7 +6,7 @@ import '../models/assistant_identity.dart';
 
 const _keyIdentity = 'assistant_identity';
 
-/// The last identity the server gave (ADR-020 D2) — so the chat shows the right name at launch, before the
+/// The last identity the server gave — so the chat shows the right name at launch, before the
 /// server has answered, and even out of reach.
 class IdentityStore {
   const IdentityStore();

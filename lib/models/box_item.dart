@@ -1,9 +1,9 @@
-/// One item of the box (ADR-018) as LunAcedia holds it — what is in the inbox at the source (Gmail, GitHub…).
+/// One item of the box as LunAcedia holds it — what is in the inbox at the source (Gmail, GitHub…).
 enum BoxSource { email, calendar, tasks, github, rss, ha, system }
 
 enum BoxPriority { urgent, normal, info }
 
-/// Master's own gestures on an item, applied at the source (ADR-018 D1) — never the agent's writes.
+/// Master's own gestures on an item, applied at the source — never the agent's writes.
 enum BoxGesture { open, read, unread, archive, trash, done }
 
 /// What a gesture changed at the source: the item left the box, is now read, now unread — or nothing.
@@ -37,14 +37,14 @@ class BoxItem {
   final String? url;
   final String? from;
 
-  /// The gestures this source can do. LunAcedia refuses the others; the app does not offer them (§5.10).
+  /// The gestures this source can do. LunAcedia refuses the others; the app does not offer them.
   Set<BoxGesture> get gestures => switch (source) {
         BoxSource.email => {BoxGesture.read, BoxGesture.unread, BoxGesture.archive, BoxGesture.trash},
         BoxSource.github || BoxSource.tasks => {BoxGesture.done},
         _ => <BoxGesture>{},
       };
 
-  /// The swipe: archive a mail, mark a GitHub notification done. Never the trash (§5.10 Q2), never a task's "Fait".
+  /// The swipe: archive a mail, mark a GitHub notification done. Never the trash, never a task's "Fait".
   BoxGesture? get swipe => switch (source) {
         BoxSource.email => BoxGesture.archive,
         BoxSource.github => BoxGesture.done,

@@ -33,7 +33,7 @@ class ApiService extends BackendClient {
 
   // ── The hub's own alerts ──────────────────────────────────────────────────
 
-  /// Its copies of box items carry a `sourceKey`: left out, the box shows the items themselves (ADR-020 §5.10).
+  /// Its copies of box items carry a `sourceKey`: left out, the box shows the items themselves.
   @override
   Future<List<Alert>> hubAlerts() async {
     final data = asObject(await _http.get('/api/mobile/alerts?limit=100'));
@@ -49,7 +49,7 @@ class ApiService extends BackendClient {
   @override
   Future<String> getDigest() async {
     // /api/mobile/digest, not /api/proxy/acedia/digest — the latter isn't under /api/mobile/*,
-    // so a MOBILE_API_KEY-only caller (no panel session) got a silent 401 on it (ADR-013 I4).
+    // so a MOBILE_API_KEY-only caller (no panel session) got a silent 401 on it.
     final data = asObject(await _http.get('/api/mobile/digest', timeout: HttpTransport.chatTimeout));
     return data['response'] as String? ?? '';
   }

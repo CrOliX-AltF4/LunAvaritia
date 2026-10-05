@@ -32,9 +32,9 @@ class LunAvaritiaApp extends StatelessWidget {
       child: MaterialApp(
         title: "Lun'Avaritia",
         debugShowCheckedModeBanner: false,
-        // The DA's ink theme (ADR-020 D5, DA2) — the same dark ground as the site and the panel.
+        // The DA's ink theme — the same dark ground as the site and the panel.
         theme: buildAppTheme(),
-        // ADR-020 M3: a phone that is not paired (or still holds an old shared secret) says so everywhere.
+        // A phone that is not paired (or still holds an old shared secret) says so everywhere.
         home: MainShell(
           wired: config.wired,
           pairingNeeded: config.baseUrl.isNotEmpty && pairingStateOf(config.token) != PairingState.paired,

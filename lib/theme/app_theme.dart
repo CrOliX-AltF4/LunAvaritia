@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// The DA shared with the site and the panel (ADR-020 D5, DA2): ink ground, ivory text, fine rules, Cormorant
+/// The DA shared with the site and the panel: ink ground, ivory text, fine rules, Cormorant
 /// Garamond for titles and Inter for the rest. Red is a fill or a border, never text on ink (unreadable there).
 abstract final class Palette {
   static const encre = Color(0xFF0D0B09);

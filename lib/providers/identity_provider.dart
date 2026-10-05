@@ -6,7 +6,7 @@ import '../models/assistant_identity.dart';
 import '../services/backend_client.dart';
 import '../services/identity_store.dart';
 
-/// Who answers, as the server last said (ADR-020 D2) — cached, so the right name shows before the network answers.
+/// Who answers, as the server last said — cached, so the right name shows before the network answers.
 class IdentityProvider extends ChangeNotifier {
   IdentityProvider(this._api, {IdentityStore store = const IdentityStore()}) : _store = store {
     unawaited(_loadCached());

@@ -11,7 +11,7 @@ import '../theme/app_theme.dart';
 import '../widgets/box_widgets.dart';
 import '../widgets/shell_widgets.dart';
 
-/// The box (DA1 « Boîte », DA-M4 — ADR-020 §5.10 M4c): LunAcedia's items, urgent first; a swipe archives a mail or
+/// The box (DA1 « Boîte », DA-M4): LunAcedia's items, urgent first; a swipe archives a mail or
 /// marks GitHub done, a long press offers the rest; the trash never on a swipe. Wired, the hub's own alerts sit apart.
 class BoxScreen extends StatefulWidget {
   const BoxScreen({super.key});

@@ -7,7 +7,7 @@ import 'package:http/testing.dart';
 import 'package:lunavaritia/services/backend_error.dart';
 import 'package:lunavaritia/services/pairing.dart';
 
-// ADR-020 M3 — the phone gets its own token for a one-time code; it never holds a master secret again.
+// The phone gets its own token for a one-time code; it never holds a master secret again.
 
 void main() {
   group('pairingStateOf', () {

@@ -6,7 +6,7 @@ import 'package:lunavaritia/config/api_config.dart';
 import 'package:lunavaritia/services/api_service.dart';
 
 void main() {
-  group('ApiService.getDigest (ADR-013 I4)', () {
+  group('ApiService.getDigest', () {
     test('calls /api/mobile/digest — the path a MOBILE_API_KEY-only caller can reach', () async {
       Uri? calledUri;
       final mockClient = MockClient((request) async {
@@ -28,7 +28,7 @@ void main() {
     });
   });
 
-  // ADR-020 §5.10 M4c — the box comes from LunAcedia; the hub's own alerts (system, spend, Discord) stay apart. Its
+  // The box comes from LunAcedia; the hub's own alerts (system, spend, Discord) stay apart. Its
   // copies of box items (sourceKey) are left out: the box shows the items themselves.
   group('ApiService hub alerts', () {
     test("keeps only the hub's own alerts, and marks one read", () async {

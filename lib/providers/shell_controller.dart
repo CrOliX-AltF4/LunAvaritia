@@ -32,7 +32,7 @@ class TrashDestination extends Destination {
   const TrashDestination();
 }
 
-/// « À valider » (ADR-020 §5.11 M5d): memory proposals and pending writes.
+/// « À valider »: memory proposals and pending writes.
 class ValidateDestination extends Destination {
   const ValidateDestination();
 }

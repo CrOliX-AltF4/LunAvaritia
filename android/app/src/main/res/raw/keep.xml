@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Resources named only at runtime, which resource shrinking would otherwise remove (ADR-020 M1): the
+<!-- Resources named only at runtime, which resource shrinking would otherwise remove: the
      notification icon (push_service.dart: '@mipmap/ic_launcher') and any drawable a notification may name. -->
 <resources xmlns:tools="http://schemas.android.com/tools"
     tools:keep="@mipmap/ic_launcher,@drawable/*" />

@@ -4,14 +4,14 @@ import '../models/topic.dart';
 import '../services/backend_client.dart';
 
 /// How long LunAcedia keeps an action waiting for the user — past that it is dropped, never executed.
-/// When an action carries no deadline: an older LunAcedia kept one 5 minutes (ADR-020 §5.11 made it durable).
+/// When an action carries no deadline: an older LunAcedia kept one 5 minutes (made it durable).
 const pendingActionLifetime = Duration(minutes: 5);
 
 /// Where an action waiting on the user stands on this phone.
 enum DecisionState { waiting, deciding, confirmed, cancelled, expired, failed }
 
 /// One open topic: its messages (paged from the server), a turn at a time, and the decisions on the actions its
-/// answers wait on (ADR-020 §5.8 (a): an action is settled where it appears).
+/// answers wait on (an action is settled where it appears).
 class TopicController extends ChangeNotifier {
   TopicController(this._api, this.topicId, {DateTime Function() now = DateTime.now, TurnResult? opened})
       : _now = now {

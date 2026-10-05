@@ -10,7 +10,7 @@ import 'package:lunavaritia/services/backend_error.dart';
 import 'package:lunavaritia/services/pairing.dart';
 import 'package:lunavaritia/services/update_checker.dart';
 
-// ADR-020 M3 — pairing from the settings: no secret is ever typed; an old one is replaced by the device token.
+// Pairing from the settings: no secret is ever typed; an old one is replaced by the device token.
 
 const _secureStorageChannel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
 
@@ -116,7 +116,7 @@ void main() {
     expect(registered.single.token, 'acd_dev_new');
   });
 
-  // §5.10 Q4 (V3b): wired, the hub sends the notifications — LunAcedia must stop sending to this phone, or they come twice.
+  // Wired, the hub sends the notifications — LunAcedia must stop sending to this phone, or they come twice.
   group('moving to the hub', () {
     Future<void> wireToHub(WidgetTester tester) async {
       await tester.tap(find.text('Avancé — relier à un hub'));

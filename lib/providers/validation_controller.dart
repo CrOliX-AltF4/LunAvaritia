@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../services/backend_client.dart';
 import '../services/validation_api.dart';
 
-/// « À valider » (ADR-020 §5.11 M5d): what waits for Master — the hub's memory proposals (wired) and LunAcedia's pending
+/// « À valider »: what waits for Master — the hub's memory proposals (wired) and LunAcedia's pending
 /// writes. Each decision goes to its server, which answers; a refusal keeps the item and says why.
 class ValidationController extends ChangeNotifier {
   ValidationController(this._api);

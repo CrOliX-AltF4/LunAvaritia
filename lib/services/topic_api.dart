@@ -1,8 +1,8 @@
 import '../models/topic.dart';
 import 'http_transport.dart';
 
-/// The topics contract (ADR-020 amendment 1) — the same paths and shapes on LunAcedia (standalone) and on the hub
-/// (wired), only the prefix changes. Also the decision on an action a topic answer is waiting on (§5.8 (a)).
+/// The topics contract — the same paths and shapes on LunAcedia (standalone) and on the hub
+/// (wired), only the prefix changes. Also the decision on an action a topic answer is waiting on.
 class TopicApi {
   TopicApi(this._http, {required this.topicsPath, required this.actionsPath});
 

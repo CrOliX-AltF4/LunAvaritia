@@ -12,7 +12,7 @@ import 'package:lunavaritia/theme/app_theme.dart';
 
 import '../support/fakes.dart';
 
-// ADR-020 §5.11 M5d, maquette DA1 « À valider » — what waits for Master: memory proposals (wired) and pending writes.
+// « À valider » — what waits for Master: memory proposals (wired) and pending writes.
 
 PendingWrite write(String id, {String summary = 'Répondre à un mail — C’est noté.', bool untrusted = false}) =>
     PendingWrite(

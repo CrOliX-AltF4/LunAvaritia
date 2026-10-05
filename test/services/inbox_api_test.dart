@@ -12,7 +12,7 @@ import 'package:lunavaritia/services/http_transport.dart';
 import 'package:lunavaritia/services/inbox_api.dart';
 import 'package:lunavaritia/services/lunacedia_client.dart';
 
-// ADR-020 §5.10 M4b — one client for the box: LunAcedia's /api/inbox standalone, the hub's /api/mobile/inbox wired.
+// One client for the box: LunAcedia's /api/inbox standalone, the hub's /api/mobile/inbox wired.
 
 Map<String, dynamic> _mail({bool read = false}) => {
       'type': 'email.received',
@@ -112,7 +112,7 @@ void main() {
     expect(ApiService(config).inbox.path, '/api/mobile/inbox');
   });
 
-  test('offers only the gestures the source can do (ADR-018, §5.10 Q1/Q2)', () {
+  test('offers only the gestures the source can do', () {
     BoxItem item(String source) => BoxItem.fromJson(_mail()..['source'] = source);
     expect(item('email').gestures, {BoxGesture.read, BoxGesture.unread, BoxGesture.archive, BoxGesture.trash});
     expect(item('email').swipe, BoxGesture.archive);

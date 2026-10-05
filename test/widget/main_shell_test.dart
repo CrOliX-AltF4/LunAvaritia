@@ -104,7 +104,7 @@ void main() {
     });
   });
 
-  group('MainShell — a tapped notification opens what it announces (ADR-020 §5.10 M4c)', () {
+  group('MainShell — a tapped notification opens what it announces', () {
     testWidgets('the box item, read in full; back leads to the box', (tester) async {
       SharedPreferences.setMockInitialValues({});
       final backend = FakeBackend();
@@ -145,7 +145,7 @@ void main() {
     });
   });
 
-  group('MainShell — « Action à valider » (ADR-020 §5.11 M5d)', () {
+  group('MainShell — « Action à valider »', () {
     testWidgets('a pending-write notification opens « À valider », listed in the drawer with its count', (tester) async {
       SharedPreferences.setMockInitialValues({});
       final backend = FakeBackend();
@@ -285,7 +285,7 @@ void main() {
     });
   });
 
-  group('MainShell — pairing banner (ADR-020 M3)', () {
+  group('MainShell — pairing banner', () {
     testWidgets('says the phone is not paired and leads to the settings', (tester) async {
       SharedPreferences.setMockInitialValues({});
       await tester.pumpWidget(_buildShell(FakeBackend(), pairingNeeded: true));
@@ -306,7 +306,7 @@ void main() {
     });
   });
 
-  group('MainShell — update on launch (ADR-020 M1)', () {
+  group('MainShell — update on launch', () {
     const available = UpdateAvailable(AvailableUpdate(version: '1.4.0', downloadUrl: 'https://x/app.apk'));
 
     testWidgets('offers a newer release once, with a download action', (tester) async {

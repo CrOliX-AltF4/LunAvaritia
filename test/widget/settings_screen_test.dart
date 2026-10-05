@@ -37,7 +37,7 @@ void main() {
   }
 
   group('SettingsScreen', () {
-    testWidgets('no mode switch and no assistant name written in the app (ADR-020 D2)', (tester) async {
+    testWidgets('no mode switch and no assistant name written in the app', (tester) async {
       await pumpSettings(tester, (_) async => AssistantIdentity.unknown);
 
       expect(find.text('Natsume'), findsNothing);
@@ -94,7 +94,7 @@ void main() {
     });
   });
 
-  group('SettingsScreen — updates (ADR-020 M1)', () {
+  group('SettingsScreen — updates', () {
     Future<void> checkWith(WidgetTester tester, UpdateStatus status) async {
       await pumpSettings(tester, (_) async => AssistantIdentity.unknown, checkUpdate: () async => status);
       await tester.ensureVisible(find.text('Rechercher une mise à jour'));

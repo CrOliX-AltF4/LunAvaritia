@@ -5,7 +5,7 @@ import 'package:http/testing.dart';
 import 'package:lunavaritia/config/api_config.dart';
 import 'package:lunavaritia/services/push_service.dart';
 
-// ADR-020 §5.10 Q4 (V3b) — moving to a hub, the phone takes itself off LunAcedia's notifications, or they come twice.
+// Moving to a hub, the phone takes itself off LunAcedia's notifications, or they come twice.
 
 void main() {
   late List<http.Request> sent;

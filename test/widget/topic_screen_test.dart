@@ -13,7 +13,7 @@ import 'package:lunavaritia/theme/app_theme.dart';
 
 import '../support/fakes.dart';
 
-// ADR-020 S4 — the topic in progress: what an answer cites, and the actions settled where they appear (§5.8 (a)).
+// The topic in progress: what an answer cites, and the actions settled where they appear.
 
 const _reply = AgentAction(
   kind: 'reply',
@@ -77,7 +77,7 @@ void main() {
     expect(find.textContaining('Expiré'), findsOneWidget);
   });
 
-  // ADR-020 §5.11 M5d — LunAcedia's list is durable: an action lives until the deadline it carries, not 5 minutes.
+  // LunAcedia's list is durable: an action lives until the deadline it carries, not 5 minutes.
   testWidgets('keeps an action decidable until the deadline LunAcedia gave it', (tester) async {
     final until = DateTime.now().add(const Duration(minutes: 90));
     await _pump(tester, [

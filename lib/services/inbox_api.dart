@@ -1,7 +1,7 @@
 import '../models/box_item.dart';
 import 'http_transport.dart';
 
-/// The box contract (ADR-018, ADR-020 §5.10) — the same paths and shapes on LunAcedia (standalone) and on the hub
+/// The box contract — the same paths and shapes on LunAcedia (standalone) and on the hub
 /// (wired), only the prefix changes. Every gesture acts at the source and the answer says what changed.
 class InboxApi {
   InboxApi(this._http, {required this.path});

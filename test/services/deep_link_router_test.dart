@@ -36,7 +36,7 @@ void main() {
     });
   });
 
-  // ADR-020 §5.10 M4c — a notification opens the item it announces, read in full; the box when it announces nothing in it.
+  // A notification opens the item it announces, read in full; the box when it announces nothing in it.
   group('resolveDeepLinkTarget', () {
     test("the hub's payload: its alert's box item (key)", () {
       expect(resolveDeepLinkTarget({'alertId': 'a1', 'source': 'email', 'key': 'email-1'}).boxKey, 'email-1');

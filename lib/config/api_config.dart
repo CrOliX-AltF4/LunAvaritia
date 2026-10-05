@@ -2,14 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// The product is LunAcedia + this app (ADR-008). Wiring to a hub (the Natsume Core) is an advanced, optional
-// setting — not a mode every user has to pick (ADR-020 D2, live check C20).
+// The product is LunAcedia + this app. Wiring to a hub (the Natsume Core) is an advanced, optional
+// setting — not a mode every user has to pick (live check C20).
 const _keyAcediaUrl = 'acedia_url';
 const _keyAcediaToken = 'acedia_token';
 const _keyHubUrl = 'hub_url';
 const _keyHubToken = 'hub_token';
 
-// Before ADR-020: one address + one token + a visible mode switch.
+// Before: one address + one token + a visible mode switch.
 const _legacyKeyBaseUrl = 'server_base_url';
 const _legacyKeyToken = 'server_token';
 const _legacyKeyBackendMode = 'backend_mode';

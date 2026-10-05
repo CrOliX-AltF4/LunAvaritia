@@ -32,7 +32,7 @@ Future<void> _startPush(ApiConfig config) async {
   } catch (_) {}
 }
 
-/// The conversations live on the server now (topics, ADR-020 S4): the chat history the app used to keep goes.
+/// The conversations live on the server now (topics): the chat history the app used to keep goes.
 Future<void> _forgetLocalHistory() async {
   try {
     final prefs = await SharedPreferences.getInstance();

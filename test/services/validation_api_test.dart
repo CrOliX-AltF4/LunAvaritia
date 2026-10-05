@@ -11,7 +11,7 @@ import 'package:lunavaritia/services/http_transport.dart';
 import 'package:lunavaritia/services/lunacedia_client.dart';
 import 'package:lunavaritia/services/validation_api.dart';
 
-// ADR-020 §5.11 M5d — « À valider »: LunAcedia's pending writes (both modes) and, wired, the memory proposals.
+// « À valider »: LunAcedia's pending writes (both modes) and, wired, the memory proposals.
 
 void main() {
   late List<http.Request> sent;

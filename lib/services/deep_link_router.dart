@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart';
 
-/// Where a tapped notification leads (ADR-020 §5.10 M4c): the box item it announces, read in full — or the box when the
+/// Where a tapped notification leads: the box item it announces, read in full — or the box when the
 /// notification is about nothing in it (a hub alert, a spend alert).
 class DeepLinkTarget {
   const DeepLinkTarget.box({this.boxKey}) : validate = false;
 
-  /// « Action à valider » (ADR-020 §5.11 M5d): a write waiting for Master.
+  /// « Action à valider »: a write waiting for Master.
   const DeepLinkTarget.validate()
       : boxKey = null,
         validate = true;

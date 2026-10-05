@@ -25,7 +25,7 @@ import 'topic_screen.dart';
 import 'trash_screen.dart';
 import 'validate_screen.dart';
 
-/// One screen at a time and a drawer for the rest (DA1 « sujet + tiroir », ADR-020 §5.3) — no tabs.
+/// One screen at a time and a drawer for the rest (DA1 « sujet + tiroir ») — no tabs.
 class MainShell extends StatefulWidget {
   // Not const — deepLinkRouter's default falls back to DeepLinkRouter.instance, a runtime
   // singleton, which can't appear in a const constructor's initializer list.
@@ -48,10 +48,10 @@ class MainShell extends StatefulWidget {
   /// would otherwise leak pending state between widget tests.
   final DeepLinkRouter deepLinkRouter;
 
-  /// Overridable for tests — the real one asks GitHub (ADR-020 M1).
+  /// Overridable for tests — the real one asks GitHub.
   final UpdateChecker updateChecker;
 
-  /// This phone is not paired with the server it talks to, or still holds an old shared secret (ADR-020 M3).
+  /// This phone is not paired with the server it talks to, or still holds an old shared secret.
   final bool pairingNeeded;
 
   /// Wired to the hub — said in the drawer.
@@ -85,7 +85,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     // even exists — check for an already-pending request instead of only reacting to
     // the listener notification going forward.
     WidgetsBinding.instance.addPostFrameCallback((_) => _onDeepLinkRequested());
-    // Cold start only, never blocking: a new signed release is offered once per version (ADR-020 M1).
+    // Cold start only, never blocking: a new signed release is offered once per version.
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeOfferUpdate());
   }
 

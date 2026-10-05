@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Where releases are published (public repository: readable without a token). ADR-020 M1, live check C19.
+/// Where releases are published (public repository: readable without a token).
 const releasesLatestUrl = 'https://api.github.com/repos/CrOliX-AltF4/LunAvaritia/releases/latest';
 
 const _keyNotifiedVersion = 'update_notified_version';

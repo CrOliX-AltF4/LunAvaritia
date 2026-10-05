@@ -1,4 +1,4 @@
-// Topics (ADR-020 amendment 1): one conversation = one topic to deal with, stored by the server. The same shapes
+// Topics: one conversation = one topic to deal with, stored by the server. The same shapes
 // come from LunAcedia (`/api/conversations`) and from the hub (`/api/mobile/conversations`).
 
 DateTime _date(Object? raw) => DateTime.tryParse(raw is String ? raw : '')?.toLocal() ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -146,7 +146,7 @@ class AgentAction {
   /// The action's own content (`action` in the contract): a reply's body, a task's title…
   final Map<String, dynamic> fields;
 
-  /// When LunAcedia drops it if nobody decided (ADR-020 §5.11) — absent from an older server.
+  /// When LunAcedia drops it if nobody decided — absent from an older server.
   final DateTime? expiresAt;
 
   bool get isMemoryProposal => kind == 'propose_memory' || connector == 'memory';

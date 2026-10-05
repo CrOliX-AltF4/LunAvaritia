@@ -105,6 +105,9 @@ class ApiConfig {
   }) =>
       ApiConfig._(acediaUrl: acediaUrl, acediaToken: acediaToken, hubUrl: hubUrl, hubToken: hubToken);
 
+  /// The same phone talking to LunAcedia directly — what it was before it was wired to a hub.
+  ApiConfig get standalone => ApiConfig._(acediaUrl: acediaUrl, acediaToken: acediaToken, hubUrl: '', hubToken: '');
+
   Map<String, String> get headers => {
         'Content-Type': 'application/json',
         if (token.isNotEmpty) 'Authorization': 'Bearer $token',

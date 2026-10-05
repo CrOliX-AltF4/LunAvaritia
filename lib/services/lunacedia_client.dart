@@ -84,4 +84,9 @@ class LunAcediaClient extends BackendClient {
   Future<void> registerPushToken(String token) async {
     await _http.post('/api/devices/push-token', body: {'token': token});
   }
+
+  /// Stops LunAcedia's notifications to this phone (its own token only, never another device's).
+  Future<void> unregisterPushToken() async {
+    await _http.delete('/api/devices/push-token');
+  }
 }

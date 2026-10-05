@@ -5,6 +5,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../config/api_config.dart';
 import 'backend_client.dart';
 import 'deep_link_router.dart';
+import 'lunacedia_client.dart';
 
 /// Sends this phone's notification token to the server [config] talks to. Called right after a pairing (live
 /// check V3): at startup an unpaired phone is refused, and nothing used to send the token again until a restart.
@@ -20,6 +21,15 @@ Future<void> registerPushTokenWith(ApiConfig config) async {
 @pragma('vm:entry-point')
 Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
   // Background messages are shown automatically by FCM on Android
+}
+
+/// Takes this phone off LunAcedia's notifications as it moves to a hub (ADR-020 §5.10 Q4): wired, the hub sends them,
+/// LunAcedia's included — otherwise every notification would come twice. The last direct call to LunAcedia; best effort.
+Future<void> leaveStandalonePushAt(ApiConfig lunacedia) async {
+  if (lunacedia.baseUrl.isEmpty || lunacedia.token.isEmpty) return;
+  try {
+    await LunAcediaClient(lunacedia).unregisterPushToken();
+  } catch (_) {}
 }
 
 class PushService {

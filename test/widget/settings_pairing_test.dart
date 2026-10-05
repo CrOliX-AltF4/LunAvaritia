@@ -41,13 +41,14 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(_secureStorageChannel, null);
   });
 
-  Future<void> pump(WidgetTester tester, PairDevice pair, {RegisterPush? registerPush}) async {
+  Future<void> pump(WidgetTester tester, PairDevice pair, {RegisterPush? registerPush, LeaveStandalonePush? leaveStandalonePush}) async {
     await tester.pumpWidget(MaterialApp(
       home: SettingsScreen(
         probe: (_) async => AssistantIdentity.unknown,
         checkUpdate: () async => const UpToDate('1.4.0'),
         pair: pair,
         registerPush: registerPush ?? (_) async {},
+        leaveStandalonePush: leaveStandalonePush ?? (_) async {},
       ),
     ));
     await tester.pumpAndSettle();
@@ -113,6 +114,45 @@ void main() {
     expect(registered, hasLength(1));
     expect(registered.single.baseUrl, 'http://acedia:4001');
     expect(registered.single.token, 'acd_dev_new');
+  });
+
+  // §5.10 Q4 (V3b): wired, the hub sends the notifications — LunAcedia must stop sending to this phone, or they come twice.
+  group('moving to the hub', () {
+    Future<void> wireToHub(WidgetTester tester) async {
+      await tester.tap(find.text('Avancé — relier à un hub'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, 'Adresse du hub'), 'http://hub:3333');
+      await tester.tap(find.text('Sauvegarder'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets("takes this phone off LunAcedia's notifications, with its LunAcedia token", (tester) async {
+      SharedPreferences.setMockInitialValues({'acedia_url': 'http://acedia:4001'});
+      secure['acedia_token'] = 'acd_dev_phone';
+      final left = <ApiConfig>[];
+      await pump(tester, ({required target, required url, required code, required name}) async => 'x',
+          leaveStandalonePush: (config) async => left.add(config));
+
+      await wireToHub(tester);
+
+      expect(left, hasLength(1));
+      expect(left.single.baseUrl, 'http://acedia:4001');
+      expect(left.single.token, 'acd_dev_phone');
+      expect(left.single.wired, isFalse);
+    });
+
+    testWidgets('does nothing when the phone was already wired', (tester) async {
+      SharedPreferences.setMockInitialValues({'acedia_url': 'http://acedia:4001', 'hub_url': 'http://hub:3333'});
+      secure['acedia_token'] = 'acd_dev_phone';
+      final left = <ApiConfig>[];
+      await pump(tester, ({required target, required url, required code, required name}) async => 'x',
+          leaveStandalonePush: (config) async => left.add(config));
+
+      await tester.tap(find.text('Sauvegarder'));
+      await tester.pumpAndSettle();
+
+      expect(left, isEmpty);
+    });
   });
 
   testWidgets('says why pairing failed and keeps the dialog open', (tester) async {

@@ -45,6 +45,26 @@ Future<FakeBackend> _pump(WidgetTester tester, List<TopicMessage> messages, {She
 }
 
 void main() {
+  testWidgets('a batch shows what it would touch, as LunAcedia words it, and is confirmed in place', (tester) async {
+    final backend = await _pump(tester, [
+      userMessage('m1', 'Tout aliexpress en indésirable'),
+      answer('m2', 'Deux mails à confirmer.', agent: _outcome(actions: [
+        AgentAction.fromJson(const {
+          'kind': 'bulk_email',
+          'status': 'pending',
+          'id': 'act-9',
+          'connector': 'Gmail',
+          'summary': 'Mettre un mail en indésirable × 2 — expéditeur contenant « aliexpress »',
+          'action': {'kind': 'bulk_email', 'action': 'mark_spam', 'match': {'fromContains': 'aliexpress'}},
+        }),
+      ])),
+    ]);
+    expect(find.textContaining('× 2 — expéditeur contenant « aliexpress »'), findsOneWidget);
+    await tester.tap(find.text('Confirmer'));
+    await tester.pumpAndSettle();
+    expect(backend.topics.decisions, [('act-9', true)]);
+  });
+
   testWidgets('confirms a waiting action right where it appears', (tester) async {
     final backend = await _pump(tester, [
       userMessage('m1', 'Réponds au syndic'),

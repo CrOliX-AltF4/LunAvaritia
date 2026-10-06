@@ -41,6 +41,7 @@ String gestureLabel(BoxItem item, BoxGesture g) => switch (g) {
       BoxGesture.unread => 'Marquer non lu',
       BoxGesture.archive => 'Archiver',
       BoxGesture.trash => 'Corbeille',
+      BoxGesture.spam => 'Indésirable',
       BoxGesture.done => item.source == BoxSource.tasks ? 'Fait' : 'Terminé',
     };
 

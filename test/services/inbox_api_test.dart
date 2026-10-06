@@ -114,7 +114,7 @@ void main() {
 
   test('offers only the gestures the source can do', () {
     BoxItem item(String source) => BoxItem.fromJson(_mail()..['source'] = source);
-    expect(item('email').gestures, {BoxGesture.read, BoxGesture.unread, BoxGesture.archive, BoxGesture.trash});
+    expect(item('email').gestures, {BoxGesture.read, BoxGesture.unread, BoxGesture.archive, BoxGesture.spam, BoxGesture.trash});
     expect(item('email').swipe, BoxGesture.archive);
     expect(item('github').gestures, {BoxGesture.done});
     expect(item('github').swipe, BoxGesture.done);

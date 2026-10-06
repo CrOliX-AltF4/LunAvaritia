@@ -56,9 +56,13 @@ class FakeTopicApi extends TopicApi {
   @override
   Future<List<Topic>> list({bool archived = false}) async => archived ? archivedTopics : active;
 
+  /// When set, a turn waits for it — what the screen shows while the server works.
+  Future<void>? hold;
+
   @override
   Future<TurnResult> open(String text, {String? aboutKey}) async {
     opened.add((text, aboutKey));
+    if (hold != null) await hold;
     final t = topic(_id('t'), text.length > 30 ? text.substring(0, 30) : text);
     final user = userMessage(_id('m'), text, about: aboutKey);
     final reply = nextAnswer;
@@ -139,7 +143,7 @@ class FakeInboxApi extends InboxApi {
     final change = switch (gesture) {
       BoxGesture.open || BoxGesture.read => BoxChange.read,
       BoxGesture.unread => BoxChange.unread,
-      BoxGesture.archive || BoxGesture.trash || BoxGesture.done => BoxChange.removed,
+      BoxGesture.archive || BoxGesture.trash || BoxGesture.spam || BoxGesture.done => BoxChange.removed,
     };
     if (change == BoxChange.removed) {
       items.removeWhere((i) => i.key == key);

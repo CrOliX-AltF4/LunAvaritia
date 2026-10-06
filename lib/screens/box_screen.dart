@@ -267,6 +267,7 @@ Future<void> showBoxActions(BuildContext context, BoxItem item) {
         if (item.gestures.contains(BoxGesture.unread) && item.read) BoxGesture.unread,
         if (item.gestures.contains(BoxGesture.archive)) BoxGesture.archive,
         if (item.gestures.contains(BoxGesture.done)) BoxGesture.done,
+        if (item.gestures.contains(BoxGesture.spam)) BoxGesture.spam,
       ];
       return SafeArea(
         child: SingleChildScrollView(
@@ -309,6 +310,7 @@ Future<void> showBoxActions(BuildContext context, BoxItem item) {
                   leading: Icon(switch (g) {
                     BoxGesture.archive => Icons.archive_outlined,
                     BoxGesture.done => Icons.check,
+                    BoxGesture.spam => Icons.report_outlined,
                     _ => Icons.circle_outlined,
                   }),
                   title: Text(gestureLabel(item, g)),

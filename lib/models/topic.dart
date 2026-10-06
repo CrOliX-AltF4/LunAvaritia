@@ -135,6 +135,7 @@ class AgentAction {
     this.reason,
     this.fields = const {},
     this.expiresAt,
+    this.summary,
   });
 
   final String kind;
@@ -148,6 +149,9 @@ class AgentAction {
 
   /// When LunAcedia drops it if nobody decided — absent from an older server.
   final DateTime? expiresAt;
+
+  /// What it does, in LunAcedia's words (« … × 37 — expéditeur contenant … ») — absent from an older server.
+  final String? summary;
 
   bool get isMemoryProposal => kind == 'propose_memory' || connector == 'memory';
 
@@ -164,11 +168,15 @@ class AgentAction {
       reason: json['reason'] is String ? json['reason'] as String : null,
       fields: action is Map<String, dynamic> ? action : const {},
       expiresAt: json['expiresAt'] is int ? DateTime.fromMillisecondsSinceEpoch(json['expiresAt'] as int) : null,
+      summary: json['summary'] is String ? json['summary'] as String : null,
     );
   }
 
   /// What the action does, in a few words.
-  String get label => _kindLabels[kind] ?? kind.replaceAll('_', ' ');
+  /// A batch is only meaningful with its selection, which LunAcedia words.
+  String get label => kind == 'bulk_email'
+      ? (summary ?? 'Traiter un lot de mails')
+      : _kindLabels[kind] ?? summary ?? kind.replaceAll('_', ' ');
 
   /// The text the user must see before agreeing: what will be sent, created or written.
   String? get preview {
@@ -188,7 +196,13 @@ class AgentAction {
   static const _kindLabels = {
     'reply': 'Répondre au mail',
     'archive_email': 'Archiver le mail',
-    'delete_email': 'Supprimer le mail',
+    'delete_email': 'Mettre le mail à la corbeille',
+    'mark_spam': 'Mettre le mail en indésirable',
+    'unmark_spam': 'Sortir le mail des indésirables',
+    'star_email': 'Suivre le mail',
+    'unstar_email': 'Ne plus suivre le mail',
+    'label_email': 'Ajouter un libellé',
+    'unlabel_email': 'Retirer un libellé',
     'mark_email_read': 'Marquer le mail comme lu',
     'mark_email_unread': 'Marquer le mail comme non lu',
     'create_event': 'Créer un événement',

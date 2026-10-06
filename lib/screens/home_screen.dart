@@ -22,16 +22,16 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+/// What « Traiter » asks when Master sends the field empty — a hint, never text he would have to delete.
+const _aboutQuestion = "Qu'est-ce que je dois en faire ?";
+
 class _HomeScreenState extends State<HomeScreen> {
   final _input = TextEditingController();
   bool _sending = false;
   String? _error;
 
-  @override
-  void initState() {
-    super.initState();
-    if (widget.aboutKey != null) _input.text = "Qu'est-ce que je dois en faire ?";
-  }
+  /// The message being sent, shown at once while the topic opens.
+  String? _pending;
 
   @override
   void dispose() {
@@ -40,11 +40,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _open() async {
-    final text = _input.text.trim();
+    final typed = _input.text.trim();
+    final text = typed.isEmpty && widget.aboutKey != null ? _aboutQuestion : typed;
     if (text.isEmpty || _sending) return;
     setState(() {
       _sending = true;
       _error = null;
+      _pending = text;
+      _input.clear();
     });
     final shell = context.read<ShellController>();
     try {
@@ -52,11 +55,23 @@ class _HomeScreenState extends State<HomeScreen> {
       shell.go(TopicDestination(result.topic.id));
     } on BackendError catch (e) {
       if (mounted) setState(() => _error = e.message);
+      _restore(typed);
     } catch (e) {
       if (mounted) setState(() => _error = 'Erreur inattendue : $e');
+      _restore(typed);
     } finally {
-      if (mounted) setState(() => _sending = false);
+      if (mounted) {
+        setState(() {
+          _sending = false;
+          _pending = null;
+        });
+      }
     }
+  }
+
+  /// A failed opening gives the text back, unless Master already typed something else.
+  void _restore(String typed) {
+    if (mounted && _input.text.isEmpty) _input.text = typed;
   }
 
   @override
@@ -82,33 +97,35 @@ class _HomeScreenState extends State<HomeScreen> {
               reverse: true,
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(greeting, style: text.displaySmall),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Un sujet par question. Ce qui mérite d'être retenu passe par la validation avant d'entrer "
-                      'dans la mémoire.',
-                      style: text.bodyLarge?.copyWith(color: Palette.lune),
-                    ),
-                    const SizedBox(height: 28),
-                    const Divider(),
-                    _Shortcut(
-                      icon: Icons.inbox_outlined,
-                      label: 'Boîte',
-                      urgent: urgent,
-                      count: box.unreadCount,
-                      onTap: () => shell.go(const BoxDestination()),
-                    ),
-                    if (topics.isNotEmpty)
-                      _Shortcut(
-                        icon: Icons.history,
-                        label: 'Reprendre « ${topics.first.title} »',
-                        onTap: () => shell.go(TopicDestination(topics.first.id)),
+                if (_pending != null) ...[const ThinkingRow(), UserBubble(text: _pending!)],
+                if (_pending == null)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(greeting, style: text.displaySmall),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Un sujet par question. Ce qui mérite d'être retenu passe par la validation avant d'entrer "
+                        'dans la mémoire.',
+                        style: text.bodyLarge?.copyWith(color: Palette.lune),
                       ),
-                  ],
-                ),
+                      const SizedBox(height: 28),
+                      const Divider(),
+                      _Shortcut(
+                        icon: Icons.inbox_outlined,
+                        label: 'Boîte',
+                        urgent: urgent,
+                        count: box.unreadCount,
+                        onTap: () => shell.go(const BoxDestination()),
+                      ),
+                      if (topics.isNotEmpty)
+                        _Shortcut(
+                          icon: Icons.history,
+                          label: 'Reprendre « ${topics.first.title} »',
+                          onTap: () => shell.go(TopicDestination(topics.first.id)),
+                        ),
+                    ],
+                  ),
               ],
             ),
           ),
@@ -140,7 +157,11 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
               child: Text(_error!, style: da(size: 13, color: Palette.ivoire)),
             ),
-          Composer(controller: _input, onSend: _open, sending: _sending, hint: 'Nouveau sujet…'),
+          Composer(
+              controller: _input,
+              onSend: _open,
+              sending: _sending,
+              hint: widget.aboutKey != null ? _aboutQuestion : 'Nouveau sujet…'),
         ],
       ),
     );

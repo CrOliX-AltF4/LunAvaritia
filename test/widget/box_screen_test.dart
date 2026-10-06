@@ -112,6 +112,17 @@ void main() {
       expect(find.text('Banque'), findsOneWidget);
     });
 
+    testWidgets('a long press reports a mail as spam, at the source, and it leaves the box', (tester) async {
+      backend.inbox.items = [item('email-1', title: 'Promo AliExpress')];
+      await pump(tester, const BoxScreen());
+      await tester.longPress(find.text('Promo AliExpress'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('box-action-spam')));
+      await tester.pumpAndSettle();
+      expect(backend.inbox.gestures, [('email-1', BoxGesture.spam)]);
+      expect(find.text('Promo AliExpress'), findsNothing);
+    });
+
     testWidgets('a long press offers the gestures of the source, the trash apart', (tester) async {
       backend.inbox.items = [item('email-1', title: 'Facture')];
       await pump(tester, const BoxScreen());

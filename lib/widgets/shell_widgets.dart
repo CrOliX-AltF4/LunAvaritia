@@ -181,3 +181,49 @@ Future<String?> _askTitle(BuildContext context, String current) {
     ),
   ).whenComplete(controller.dispose);
 }
+
+/// « Je regarde… » — a turn in progress.
+class ThinkingRow extends StatelessWidget {
+  const ThinkingRow({super.key});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 18),
+        child: Row(
+          children: [
+            const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.5)),
+            const SizedBox(width: 10),
+            Text('Je regarde…', style: da(size: 13, color: Palette.lune)),
+          ],
+        ),
+      );
+}
+
+/// What Master wrote, on the right.
+class UserBubble extends StatelessWidget {
+  const UserBubble({super.key, required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Align(
+        alignment: Alignment.centerRight,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.78),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Palette.encre2,
+              border: Border.all(color: Palette.filet),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(4),
+              ),
+            ),
+            child: SelectableText(text, style: da(height: 1.45)),
+          ),
+        ),
+      );
+}

@@ -4,7 +4,7 @@ enum BoxSource { email, calendar, tasks, github, rss, ha, system }
 enum BoxPriority { urgent, normal, info }
 
 /// Master's own gestures on an item, applied at the source — never the agent's writes.
-enum BoxGesture { open, read, unread, archive, trash, done }
+enum BoxGesture { open, read, unread, archive, trash, spam, done }
 
 /// What a gesture changed at the source: the item left the box, is now read, now unread — or nothing.
 enum BoxChange { removed, read, unread }
@@ -39,7 +39,7 @@ class BoxItem {
 
   /// The gestures this source can do. LunAcedia refuses the others; the app does not offer them.
   Set<BoxGesture> get gestures => switch (source) {
-        BoxSource.email => {BoxGesture.read, BoxGesture.unread, BoxGesture.archive, BoxGesture.trash},
+        BoxSource.email => {BoxGesture.read, BoxGesture.unread, BoxGesture.archive, BoxGesture.spam, BoxGesture.trash},
         BoxSource.github || BoxSource.tasks => {BoxGesture.done},
         _ => <BoxGesture>{},
       };

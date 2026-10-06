@@ -111,7 +111,7 @@ class _TopicScreenState extends State<TopicScreen> {
       itemCount: reversed.length + (controller.hasMore ? 1 : 0) + (controller.sending ? 1 : 0),
       itemBuilder: (context, i) {
         if (controller.sending) {
-          if (i == 0) return const _Thinking();
+          if (i == 0) return const ThinkingRow();
           i -= 1;
         }
         if (i == reversed.length) {
@@ -125,55 +125,11 @@ class _TopicScreenState extends State<TopicScreen> {
         final message = reversed[i];
         return Padding(
           padding: const EdgeInsets.only(bottom: 18),
-          child: message.role == TopicRole.user ? _UserBubble(message: message) : _Answer(message: message),
+          child: message.role == TopicRole.user ? UserBubble(text: message.text) : _Answer(message: message),
         );
       },
     );
   }
-}
-
-class _Thinking extends StatelessWidget {
-  const _Thinking();
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 18),
-        child: Row(
-          children: [
-            const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.5)),
-            const SizedBox(width: 10),
-            Text('Je regarde…', style: da(size: 13, color: Palette.lune)),
-          ],
-        ),
-      );
-}
-
-class _UserBubble extends StatelessWidget {
-  const _UserBubble({required this.message});
-
-  final TopicMessage message;
-
-  @override
-  Widget build(BuildContext context) => Align(
-        alignment: Alignment.centerRight,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.78),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: Palette.encre2,
-              border: Border.all(color: Palette.filet),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-                bottomLeft: Radius.circular(16),
-                bottomRight: Radius.circular(4),
-              ),
-            ),
-            child: SelectableText(message.text, style: da(height: 1.45)),
-          ),
-        ),
-      );
 }
 
 class _Answer extends StatelessWidget {

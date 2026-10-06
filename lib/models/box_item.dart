@@ -21,6 +21,7 @@ class BoxItem {
     this.body,
     this.url,
     this.from,
+    this.priorityReason,
   });
 
   /// LunAcedia's key for the item (its dedupeKey) — what a gesture, a topic or a notification points at.
@@ -36,6 +37,9 @@ class BoxItem {
   final String? body;
   final String? url;
   final String? from;
+
+  /// Why it has its priority, in LunAcedia's words (« VIP », « Gmail : important ») — absent from an older server.
+  final String? priorityReason;
 
   /// The gestures this source can do. LunAcedia refuses the others; the app does not offer them.
   Set<BoxGesture> get gestures => switch (source) {
@@ -64,12 +68,13 @@ class BoxItem {
       body: json['body'] as String?,
       url: json['url'] as String?,
       from: meta['from'] as String?,
+      priorityReason: json['priorityReason'] as String?,
     );
   }
 
   BoxItem copyWith({bool? read}) => BoxItem(
         key: key, type: type, source: source, title: title, priority: priority, ts: ts,
-        read: read ?? this.read, body: body, url: url, from: from,
+        read: read ?? this.read, body: body, url: url, from: from, priorityReason: priorityReason,
       );
 }
 

@@ -16,7 +16,7 @@ import '../support/fakes.dart';
 
 // The box, the reader, the trash.
 
-BoxItem item(String key, {String source = 'email', String priority = 'normal', String? title, String? from}) =>
+BoxItem item(String key, {String source = 'email', String priority = 'normal', String? title, String? from, String? reason}) =>
     BoxItem.fromJson({
       'dedupeKey': key,
       'type': '$source.x',
@@ -27,6 +27,7 @@ BoxItem item(String key, {String source = 'email', String priority = 'normal', S
       'read': false,
       'url': 'https://example.com/$key',
       if (from != null) 'meta': {'from': from},
+      if (reason != null) 'priorityReason': reason,
     });
 
 late FakeBackend backend;
@@ -205,6 +206,14 @@ void main() {
       expect(find.text('Bonjour, voici le texte entier.'), findsOneWidget);
       expect(find.text('Syndic <syndic@ex.fr>'), findsOneWidget);
       expect(find.textContaining("texte d'un tiers"), findsOneWidget);
+    });
+
+    // One way to set a priority, said on the item: « Urgent — VIP », « Normal — Gmail : important ».
+    testWidgets('says why the item has its priority', (tester) async {
+      backend.inbox.items = [item('email-1', priority: 'urgent', reason: 'VIP')];
+      await box.load();
+      await pump(tester, const BoxReaderScreen(itemKey: 'email-1'));
+      expect(find.text('Urgent — VIP'), findsOneWidget);
     });
 
     testWidgets('archiving leads back to the box, the item gone', (tester) async {

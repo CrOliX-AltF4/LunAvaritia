@@ -121,7 +121,8 @@ class _BoxReaderScreenState extends State<BoxReaderScreen> {
                 children: [
                   Container(width: 3, height: 16, color: Palette.rouge),
                   const SizedBox(width: 8),
-                  Text('Urgent', style: da(size: 12, color: Palette.lune, letterSpacing: 0.7)),
+                  Text(item.priorityReason != null ? 'Urgent — ${item.priorityReason}' : 'Urgent',
+                      style: da(size: 12, color: Palette.lune, letterSpacing: 0.7)),
                 ],
               ),
             ),
@@ -133,6 +134,14 @@ class _BoxReaderScreenState extends State<BoxReaderScreen> {
               Text(boxTime(item.ts), style: da(size: 13, color: Palette.lune)),
             ],
           ),
+          if (item.priorityReason != null && item.priority != BoxPriority.urgent)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                '${item.priority == BoxPriority.normal ? 'Normal' : 'Info'} — ${item.priorityReason}',
+                style: da(size: 12, color: Palette.lune),
+              ),
+            ),
           const SizedBox(height: 16),
           Row(
             children: [

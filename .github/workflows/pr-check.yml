@@ -52,12 +52,14 @@ jobs:
                   xl_label: "size/XL"
                   fail_if_xl: false
 
-    version-bump:
-        name: Require pubspec.yaml version bump (feat/fix)
+    version-notice:
+        name: Release notice — version unchanged (feat/fix)
         runs-on: ubuntu-latest
         # auto-tag.yml only tags (and release.yml only builds/publishes) when pubspec.yaml's
-        # version differs from the last tag — a feat/fix PR that forgets to bump it merges with
-        # green CI and never ships (found 2026-09-17: PR #19 and #20 both did this silently).
+        # version differs from the last tag — a feat/fix PR merged without a bump never ships (found
+        # 2026-09-17: PR #19 and #20 both did this silently). Never blocking since 2026-10-07: versions are
+        # set once, at the end of a working session, in a chore(release) PR — this says a PR does not ship
+        # on its own, so it is never forgotten silently.
         if: startsWith(github.event.pull_request.title, 'feat') || startsWith(github.event.pull_request.title, 'fix')
         steps:
             - uses: actions/checkout@v4
@@ -70,6 +72,8 @@ jobs:
                   base_version=$(git show origin/main:pubspec.yaml | grep '^version:' | awk '{print $2}')
                   head_version=$(grep '^version:' pubspec.yaml | awk '{print $2}')
                   if [ "$base_version" = "$head_version" ]; then
-                    echo "::error::pubspec.yaml version ($head_version) is unchanged from main — auto-tag.yml silently skips releasing when the tag already exists. Bump the version in this PR."
-                    exit 1
+                    echo "::warning::pubspec.yaml version ($head_version) unchanged from main — this PR does not ship on its own; it ships with the version bump at the end of the session."
+                    echo "Version $head_version unchanged: not released by this PR (bump at the end of the session)." >> "$GITHUB_STEP_SUMMARY"
+                  else
+                    echo "Version $base_version → $head_version: merging this PR releases it." >> "$GITHUB_STEP_SUMMARY"
                   fi

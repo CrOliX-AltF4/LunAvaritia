@@ -48,10 +48,11 @@ server, the same from every client; listed by day in the drawer, renamed, archiv
 answer shows the items it cites (open one, or start a topic on it), the actions it proposes with **Confirmer /
 Annuler** right there and their deadline, and says when it read a third party's text.
 
-**The box** — your inbox at the source, urgent first, filtered by source. Tap an item to read it in full (marked read
-at the source); swipe to archive a mail or mark a GitHub notification done; a long press for the rest — read / unread,
-archive, trash (apart, never on a swipe), **Traiter** to open a topic on it, **Fait** on a task. Gmail's trash, with
-**Restaurer**. Every gesture waits for the source's answer: a refused one keeps the item and says why.
+**The box** — your inbox at the source, urgent first, filtered by source. Tap an item to read it in full (opening is
+reading: marked read at the source); swipe to archive a mail or mark a GitHub notification done; a long press for the
+rest — read, archive, trash (apart, never on a swipe), **Traiter** to open a topic on it, **Fait** on a task. Gmail's
+trash a page at a time, with **Restaurer**. Every gesture waits for the source's answer: a refused one keeps the item
+and says why. Once an item is read or gone, an action decided or a hub alert read, its notification is taken down.
 
 **À valider** — what waits for you: the writes your assistant proposed (in words, with their deadline and whether a
 third party's text came first) — **Confirmer / Annuler**; and, wired to a hub, what it would like to remember —

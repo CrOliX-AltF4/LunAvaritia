@@ -264,7 +264,6 @@ Future<void> showBoxActions(BuildContext context, BoxItem item) {
 
       final source = [
         if (item.gestures.contains(BoxGesture.read) && !item.read) BoxGesture.read,
-        if (item.gestures.contains(BoxGesture.unread) && item.read) BoxGesture.unread,
         if (item.gestures.contains(BoxGesture.archive)) BoxGesture.archive,
         if (item.gestures.contains(BoxGesture.done)) BoxGesture.done,
         if (item.gestures.contains(BoxGesture.spam)) BoxGesture.spam,
@@ -348,8 +347,38 @@ class _HubRow extends StatelessWidget {
 
   final Alert alert;
 
+  /// Opening is reading (2026-10-07): the alert's text, and it is marked read — no « Lu » button.
+  Future<void> _open(BuildContext context) async {
+    final box = context.read<BoxController>();
+    if (!alert.read) unawaited(box.markHubAlertRead(alert.id).catchError((Object _) {}));
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Palette.encre2,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(alert.title, style: da(family: serif, size: 22, weight: 500)),
+              const SizedBox(height: 4),
+              Text(boxTime(alert.ts), style: da(size: 13, color: Palette.lune)),
+              const SizedBox(height: 16),
+              SelectableText(alert.body ?? "Pas d'autre texte.", style: da(size: 15, height: 1.6)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) => InkWell(
+      key: ValueKey('hub-alert-${alert.id}'),
+      onTap: () => _open(context),
+      child: Container(
         padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
         decoration: const BoxDecoration(border: Border(top: BorderSide(color: Palette.filet))),
         child: Row(
@@ -370,12 +399,7 @@ class _HubRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (!alert.read)
-              TextButton(
-                onPressed: () => context.read<BoxController>().markHubAlertRead(alert.id),
-                child: const Text('Lu'),
-              ),
           ],
         ),
-      );
+      ));
 }

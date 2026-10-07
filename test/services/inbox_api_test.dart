@@ -76,7 +76,13 @@ void main() {
     final api = InboxApi.hub(transport);
     await withServer((req) {
       if (req.url.path.endsWith('/trash') && req.method == 'GET') {
-        return {'items': [{'id': 'm9', 'title': 'Vieux mail', 'from': 'Banque', 'ts': 1759651200000}]};
+        return req.url.queryParameters['page'] == 'p2'
+            ? {'items': [], 'skipped': 0}
+            : {
+                'items': [{'id': 'm9', 'title': 'Vieux mail', 'from': 'Banque', 'ts': 1759651200000}],
+                'next': 'p2',
+                'skipped': 1,
+              };
       }
       return req.method == 'GET' ? {'items': [], 'unread': 0} : {'ok': true, 'change': 'removed'};
     }, () async {
@@ -84,14 +90,19 @@ void main() {
       final archived = await api.gesture('email-a/b', BoxGesture.archive);
       expect(archived.change, BoxChange.removed);
       final trash = await api.trash();
-      expect(trash.single.id, 'm9');
-      expect(trash.single.from, 'Banque');
+      expect(trash.items.single.id, 'm9');
+      expect(trash.items.single.from, 'Banque');
+      // A page at a time: the token of the next one, and what Gmail could not give.
+      expect(trash.next, 'p2');
+      expect(trash.skipped, 1);
+      expect((await api.trash(page: 'p2')).next, isNull);
       await api.restore('m9');
     });
     expect(sent.map((r) => '${r.method} ${r.url.toString().replaceFirst('http://srv:4001', '')}'), [
       'GET /api/mobile/inbox',
       'POST /api/mobile/inbox/email-a%2Fb/archive',
       'GET /api/mobile/inbox/trash',
+      'GET /api/mobile/inbox/trash?page=p2',
       'POST /api/mobile/inbox/trash/m9/restore',
     ]);
   });
@@ -114,9 +125,11 @@ void main() {
 
   test('offers only the gestures the source can do', () {
     BoxItem item(String source) => BoxItem.fromJson(_mail()..['source'] = source);
-    expect(item('email').gestures, {BoxGesture.read, BoxGesture.unread, BoxGesture.archive, BoxGesture.spam, BoxGesture.trash});
+    // No "Non lu": opening is reading (2026-10-07).
+    expect(item('email').gestures, {BoxGesture.read, BoxGesture.archive, BoxGesture.spam, BoxGesture.trash});
     expect(item('email').swipe, BoxGesture.archive);
-    expect(item('github').gestures, {BoxGesture.done});
+    // A GitHub notification is marked read (it stays until done) or done, as at GitHub.
+    expect(item('github').gestures, {BoxGesture.read, BoxGesture.done});
     expect(item('github').swipe, BoxGesture.done);
     // "Fait" on a task (M4d): offered, never on a swipe — completing a task by a slip is worse than archiving a mail.
     expect(item('tasks').gestures, {BoxGesture.done});

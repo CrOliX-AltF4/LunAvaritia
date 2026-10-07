@@ -30,14 +30,10 @@ class InboxApi {
         asObject(await _http.post('$path/${Uri.encodeComponent(key)}/${gesture.name}')),
       );
 
-  /// Gmail's trash, most recent first.
-  Future<List<TrashItem>> trash() async {
-    final data = asObject(await _http.get('$path/trash'));
-    return [
-      for (final t in (data['items'] as List<dynamic>? ?? const []))
-        if (t is Map<String, dynamic>) TrashItem.fromJson(t),
-    ];
-  }
+  /// One page of Gmail's trash, most recent first; [page] is the `next` of the previous one.
+  Future<TrashPage> trash({String? page}) async => TrashPage.fromJson(
+        asObject(await _http.get(page == null ? '$path/trash' : '$path/trash?page=${Uri.encodeQueryComponent(page)}')),
+      );
 
   /// Back to the inbox at the source; LunAcedia collects it again at its next pass.
   Future<void> restore(String messageId) async {

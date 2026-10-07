@@ -9,7 +9,8 @@ import '../theme/app_theme.dart';
 import '../widgets/box_widgets.dart';
 
 /// Gmail's trash (DA-M4): Gmail keeps each mail 30 days, LunAcedia stores nothing. « Restaurer » puts it back in the
-/// inbox at the source; it comes back to the box at LunAcedia's next pass.
+/// inbox at the source; it comes back to the box at LunAcedia's next pass. Read a page at a time (« Voir plus »): a
+/// trash of hundreds of mails was slow, and cut without a word past 500 (2026-10-07).
 class TrashScreen extends StatefulWidget {
   const TrashScreen({super.key});
 
@@ -19,6 +20,9 @@ class TrashScreen extends StatefulWidget {
 
 class _TrashScreenState extends State<TrashScreen> {
   List<TrashItem>? _items;
+  String? _next;
+  int _skipped = 0;
+  bool _more = false;
   String? _error;
 
   @override
@@ -29,10 +33,37 @@ class _TrashScreenState extends State<TrashScreen> {
 
   Future<void> _load() async {
     try {
-      final items = await context.read<BoxController>().trash();
-      if (mounted) setState(() => _items = items);
+      final page = await context.read<BoxController>().trash();
+      if (mounted) {
+        setState(() {
+          _items = page.items;
+          _next = page.next;
+          _skipped = page.skipped;
+        });
+      }
     } on BackendError catch (e) {
       if (mounted) setState(() => _error = e.message);
+    }
+  }
+
+  Future<void> _loadMore() async {
+    final next = _next;
+    if (next == null || _more) return;
+    setState(() => _more = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final page = await context.read<BoxController>().trash(page: next);
+      if (mounted) {
+        setState(() {
+          _items = [...?_items, ...page.items];
+          _next = page.next;
+          _skipped += page.skipped;
+        });
+      }
+    } on BackendError catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Voir plus : ${e.message}')));
+    } finally {
+      if (mounted) setState(() => _more = false);
     }
   }
 
@@ -106,6 +137,25 @@ class _TrashScreenState extends State<TrashScreen> {
                   ],
                 ),
               ),
+          if (_skipped > 0)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                _skipped == 1
+                    ? '1 mail illisible dans Gmail : absent de cette liste.'
+                    : '$_skipped mails illisibles dans Gmail : absents de cette liste.',
+                style: da(size: 13, color: Palette.lune),
+              ),
+            ),
+          if (_next != null)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: OutlinedButton(
+                key: const ValueKey('trash-more'),
+                onPressed: _more ? null : _loadMore,
+                child: Text(_more ? 'Chargement…' : 'Voir plus'),
+              ),
+            ),
         ],
       ),
     );

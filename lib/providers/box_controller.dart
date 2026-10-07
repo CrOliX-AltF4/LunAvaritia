@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/alert.dart';
 import '../models/box_item.dart';
+import '../models/digest.dart';
 import '../services/backend_client.dart';
 
 /// Chips of the box (DA1): every source, or one.
@@ -97,7 +98,7 @@ class BoxController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<List<TrashItem>> trash() => _api.inbox.trash();
+  Future<TrashPage> trash({String? page}) => _api.inbox.trash(page: page);
 
   Future<void> restore(String messageId) => _api.inbox.restore(messageId);
 
@@ -107,5 +108,5 @@ class BoxController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<String> fetchDigest() => _api.getDigest();
+  Future<Digest> fetchDigest() => _api.getDigest();
 }

@@ -11,7 +11,15 @@ void main() {
       Uri? calledUri;
       final mockClient = MockClient((request) async {
         calledUri = request.url;
-        return http.Response(jsonEncode({'response': 'Digest text'}), 200);
+        return http.Response(
+            jsonEncode({
+              'response': 'Digest text',
+              'count': 3,
+              'urgent': [
+                {'key': 'email-1', 'title': 'Du boss', 'source': 'email', 'priorityReason': 'VIP'},
+              ],
+            }),
+            200);
       });
 
       final service = ApiService(
@@ -23,8 +31,21 @@ void main() {
         () => mockClient,
       );
 
-      expect(result, 'Digest text');
+      expect(result.summary, 'Digest text');
+      expect(result.count, 3);
+      // The urgent items come listed by LunAcedia's rules, with their reason — never judged by the model.
+      expect(result.urgent.single.key, 'email-1');
+      expect(result.urgent.single.priorityReason, 'VIP');
       expect(calledUri?.path, '/api/mobile/digest');
+    });
+
+    test('an older server without the urgent list still gives its summary', () async {
+      final mockClient = MockClient((_) async => http.Response(jsonEncode({'response': 'Résumé'}), 200));
+      final service = ApiService(ApiConfig.forTest(baseUrl: 'http://hub:3333', token: 'k', backendMode: 'natsume'));
+      final result = await http.runWithClient(() => service.getDigest(), () => mockClient);
+      expect(result.summary, 'Résumé');
+      expect(result.urgent, isEmpty);
+      expect(result.isEmpty, isFalse);
     });
   });
 

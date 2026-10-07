@@ -125,7 +125,7 @@ void main() {
 
   test("lists Gmail's trash and restores from it", () async {
     backend.inbox.trashed = [TrashItem(id: 'm9', title: 'Vieux', from: 'Banque', ts: DateTime(2026))];
-    expect((await box.trash()).single.id, 'm9');
+    expect((await box.trash()).items.single.id, 'm9');
     await box.restore('m9');
     expect(backend.inbox.restored, ['m9']);
   });

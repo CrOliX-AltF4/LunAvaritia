@@ -1,6 +1,7 @@
 import '../config/api_config.dart';
 import '../models/alert.dart';
 import '../models/assistant_identity.dart';
+import '../models/digest.dart';
 import 'backend_client.dart';
 import 'http_transport.dart';
 import 'inbox_api.dart';
@@ -47,11 +48,10 @@ class ApiService extends BackendClient {
   }
 
   @override
-  Future<String> getDigest() async {
+  Future<Digest> getDigest() async {
     // /api/mobile/digest, not /api/proxy/acedia/digest — the latter isn't under /api/mobile/*,
     // so a MOBILE_API_KEY-only caller (no panel session) got a silent 401 on it.
-    final data = asObject(await _http.get('/api/mobile/digest', timeout: HttpTransport.chatTimeout));
-    return data['response'] as String? ?? '';
+    return Digest.fromJson(asObject(await _http.get('/api/mobile/digest', timeout: HttpTransport.chatTimeout)));
   }
 
   // ── Push token ────────────────────────────────────────────────────────────

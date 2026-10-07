@@ -13,7 +13,9 @@ import '../widgets/box_widgets.dart';
 import 'box_screen.dart';
 
 /// One item read in full (DA-M4): the "open" gesture brings the whole text and marks it read at the source. Reached from
-/// the box or from a tapped notification — the item may have left the box since, which it then says.
+/// the box or from a tapped notification — the item may have left the box since, which it then says. It follows its
+/// item: once the item has left the box — whatever did it (a gesture here or in the sheet of actions, « Traiter », the
+/// source itself) — the reader goes back to the list as it now is (2026-10-07).
 class BoxReaderScreen extends StatefulWidget {
   const BoxReaderScreen({super.key, required this.itemKey});
 
@@ -28,6 +30,7 @@ class _BoxReaderScreenState extends State<BoxReaderScreen> {
   String? _body;
   String? _error;
   bool _opening = true;
+  bool _leaving = false;
 
   @override
   void initState() {
@@ -61,19 +64,20 @@ class _BoxReaderScreenState extends State<BoxReaderScreen> {
   void _back() => context.read<ShellController>().go(const BoxDestination());
 
   Future<void> _gesture(BoxGesture g) async {
-    final item = _item!;
-    if (!await runBoxGesture(context, item, g) || !mounted) return;
-    if (g == BoxGesture.unread) {
-      _back();
-      return;
-    }
-    // Gone from the box at the source: nothing left to read here.
-    if (context.read<BoxController>().byKey(item.key) == null) _back();
+    await runBoxGesture(context, _item!, g);
   }
 
   @override
   Widget build(BuildContext context) {
     final item = _item;
+    final box = context.watch<BoxController>();
+    // Gone from the box, however: nothing left to read here — back to the list as it is now.
+    if (item != null && !_leaving && box.byKey(item.key) == null) {
+      _leaving = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _back();
+      });
+    }
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(tooltip: 'Retour à la boîte', icon: const Icon(Icons.arrow_back), onPressed: _back),
@@ -185,8 +189,6 @@ class _BoxReaderScreenState extends State<BoxReaderScreen> {
                     onPressed: () => _gesture(BoxGesture.done),
                     child: Text(gestureLabel(item, BoxGesture.done)),
                   )),
-                if (item.gestures.contains(BoxGesture.unread))
-                  _side(OutlinedButton(onPressed: () => _gesture(BoxGesture.unread), child: const Text('Non lu'))),
                 if (url != null)
                   _side(OutlinedButton(
                     onPressed: () => unawaited(launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication)),

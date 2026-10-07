@@ -1,14 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../models/topic.dart';
 import '../services/backend_client.dart';
+import '../services/notification_tray.dart';
 
 /// How long LunAcedia keeps an action waiting for the user — past that it is dropped, never executed.
 /// When an action carries no deadline: an older LunAcedia kept one 5 minutes (made it durable).
 const pendingActionLifetime = Duration(minutes: 5);
 
-/// Where an action waiting on the user stands on this phone.
-enum DecisionState { waiting, deciding, confirmed, cancelled, expired, failed }
+/// Where an action waiting on the user stands on this phone. `failed`: the decision did not get through (try again);
+/// `notDone`: it was settled and nothing was done — failed at the source or refused (nothing left to press).
+enum DecisionState { waiting, deciding, confirmed, cancelled, expired, failed, notDone }
 
 /// One open topic: its messages (paged from the server), a turn at a time, and the decisions on the actions its
 /// answers wait on (an action is settled where it appears).
@@ -38,6 +42,7 @@ class TopicController extends ChangeNotifier {
 
   final Map<String, DecisionState> _decisions = {};
   final Map<String, String> _decisionErrors = {};
+  final Map<String, DateTime> _decidedAt = {};
 
   Future<void> load() async {
     loading = true;
@@ -121,18 +126,30 @@ class TopicController extends ChangeNotifier {
     unsent = text;
   }
 
+  /// Decided on this phone just now, or as the server says it ended — never an active card for a settled action.
   DecisionState decisionOf(TopicMessage message, AgentAction action) {
     final id = action.id ?? '';
     final known = _decisions[id];
     if (known != null) return known;
+    final ended = switch (action.outcome?.status) {
+      'confirmed' => DecisionState.confirmed,
+      'cancelled' => DecisionState.cancelled,
+      'expired' => DecisionState.expired,
+      'failed' || 'refused' => DecisionState.notDone,
+      _ => null,
+    };
+    if (ended != null) return ended;
     return remainingFor(message, action) > Duration.zero ? DecisionState.waiting : DecisionState.expired;
   }
+
+  /// When it was settled: here, or as the server recorded it. Null when unknown (an older server).
+  DateTime? decidedAtOf(AgentAction action) => _decidedAt[action.id ?? ''] ?? action.outcome?.at;
 
   /// How long LunAcedia still keeps this action waiting: until its own deadline, or 5 minutes from an older server.
   Duration remainingFor(TopicMessage message, AgentAction action) =>
       (action.expiresAt ?? message.at.add(pendingActionLifetime)).difference(_now());
 
-  String? decisionErrorOf(AgentAction action) => _decisionErrors[action.id ?? ''];
+  String? decisionErrorOf(AgentAction action) => _decisionErrors[action.id ?? ''] ?? action.outcome?.reason;
 
   Future<void> decide(AgentAction action, {required bool confirm}) async {
     final id = action.id;
@@ -143,10 +160,14 @@ class TopicController extends ChangeNotifier {
     try {
       await _api.topics.decide(id, confirm: confirm);
       _decisions[id] = confirm ? DecisionState.confirmed : DecisionState.cancelled;
+      _decidedAt[id] = _now();
+      // Settled: its notification has nothing left to ask.
+      unawaited(NotificationTray.instance.dismiss('action-$id'));
     } on BackendError catch (e) {
       // 410 from the hub, 404 from LunAcedia: it is no longer waiting — nothing was done.
       if (e.statusCode == 410 || e.statusCode == 404) {
         _decisions[id] = DecisionState.expired;
+        unawaited(NotificationTray.instance.dismiss('action-$id'));
       } else {
         _decisions[id] = DecisionState.failed;
         _decisionErrors[id] = e.message;

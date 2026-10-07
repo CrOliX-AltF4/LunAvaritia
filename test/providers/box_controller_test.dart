@@ -3,7 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lunavaritia/models/alert.dart';
 import 'package:lunavaritia/models/box_item.dart';
 import 'package:lunavaritia/providers/box_controller.dart';
+import 'package:lunavaritia/providers/validation_controller.dart';
 import 'package:lunavaritia/services/backend_error.dart';
+import 'package:lunavaritia/services/notification_tray.dart';
+import 'package:lunavaritia/services/validation_api.dart';
 
 import '../support/fakes.dart';
 
@@ -37,6 +40,45 @@ void main() {
   setUp(() {
     backend = FakeBackend();
     box = BoxController(backend);
+  });
+
+  // 2026-10-07: a notification stayed in the shade once its object was settled.
+  group('the notification shade follows', () {
+    late FakeTray tray;
+    setUp(() => NotificationTray.instance = tray = FakeTray());
+    tearDown(() => NotificationTray.instance = FakeTray());
+
+    test('an item read or gone takes its notification down', () async {
+      backend.inbox.items = [item('email-1'), item('email-2')];
+      await box.load();
+      await box.open(box.byKey('email-1')!);
+      await box.gesture(box.byKey('email-2')!, BoxGesture.archive);
+      expect(tray.dismissed, ['email-1', 'email-2']);
+    });
+
+    test('reading the box sweeps what was settled elsewhere — never an action, never an unread item', () async {
+      tray.shown.addAll(['email-read', 'email-gone', 'email-new', 'action-a1', 'alert-h1', 'alert-h2']);
+      backend.inbox.items = [item('email-read', read: true), item('email-new')];
+      backend.hubAlertList = [hubAlert('h1', read: true), hubAlert('h2')];
+      await box.load();
+      expect(tray.dismissed..sort(), ['alert-h1', 'email-gone', 'email-read']);
+    });
+
+    test('a box that could not be read sweeps nothing', () async {
+      tray.shown.add('email-1');
+      backend.inbox.listError = BackendError(BackendErrorKind.unreachable);
+      await box.load();
+      expect(tray.dismissed, isEmpty);
+    });
+
+    test('« À valider » takes down the notification of an action no longer waiting', () async {
+      tray.shown.addAll(['action-a1', 'action-a2']);
+      backend.validation.writes = [
+        PendingWrite.fromJson({'id': 'a2', 'connector': 'Gmail', 'action': {'kind': 'reply'}, 'createdAt': 1}),
+      ];
+      await ValidationController(backend).load();
+      expect(tray.dismissed, ['action-a1']);
+    });
   });
 
   test('splits the box into urgent and the rest, newest first as LunAcedia sends them, and counts the unread',
@@ -125,7 +167,7 @@ void main() {
 
   test("lists Gmail's trash and restores from it", () async {
     backend.inbox.trashed = [TrashItem(id: 'm9', title: 'Vieux', from: 'Banque', ts: DateTime(2026))];
-    expect((await box.trash()).single.id, 'm9');
+    expect((await box.trash()).items.single.id, 'm9');
     await box.restore('m9');
     expect(backend.inbox.restored, ['m9']);
   });

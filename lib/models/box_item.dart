@@ -3,8 +3,9 @@ enum BoxSource { email, calendar, tasks, github, rss, ha, system }
 
 enum BoxPriority { urgent, normal, info }
 
-/// Master's own gestures on an item, applied at the source — never the agent's writes.
-enum BoxGesture { open, read, unread, archive, trash, spam, done }
+/// Master's own gestures on an item, applied at the source — never the agent's writes. No "unread": opening is
+/// reading (2026-10-07).
+enum BoxGesture { open, read, archive, trash, spam, done }
 
 /// What a gesture changed at the source: the item left the box, is now read, now unread — or nothing.
 enum BoxChange { removed, read, unread }
@@ -41,10 +42,12 @@ class BoxItem {
   /// Why it has its priority, in LunAcedia's words (« VIP », « Gmail : important ») — absent from an older server.
   final String? priorityReason;
 
-  /// The gestures this source can do. LunAcedia refuses the others; the app does not offer them.
+  /// The gestures this source can do. LunAcedia refuses the others; the app does not offer them. A GitHub
+  /// notification is marked read (it stays) or done (it leaves), as at GitHub.
   Set<BoxGesture> get gestures => switch (source) {
-        BoxSource.email => {BoxGesture.read, BoxGesture.unread, BoxGesture.archive, BoxGesture.spam, BoxGesture.trash},
-        BoxSource.github || BoxSource.tasks => {BoxGesture.done},
+        BoxSource.email => {BoxGesture.read, BoxGesture.archive, BoxGesture.spam, BoxGesture.trash},
+        BoxSource.github => {BoxGesture.read, BoxGesture.done},
+        BoxSource.tasks => {BoxGesture.done},
         _ => <BoxGesture>{},
       };
 
@@ -97,6 +100,24 @@ class GestureResult {
   factory GestureResult.fromJson(Map<String, dynamic> json) => GestureResult(
         change: BoxChange.values.where((c) => c.name == json['change']).firstOrNull,
         body: json['body'] as String?,
+      );
+}
+
+/// One page of Gmail's trash: [next] asks for the following one; [skipped] mails Gmail listed but could not give.
+class TrashPage {
+  TrashPage({required this.items, this.next, this.skipped = 0});
+
+  final List<TrashItem> items;
+  final String? next;
+  final int skipped;
+
+  factory TrashPage.fromJson(Map<String, dynamic> json) => TrashPage(
+        items: [
+          for (final t in (json['items'] as List<dynamic>? ?? const []))
+            if (t is Map<String, dynamic>) TrashItem.fromJson(t),
+        ],
+        next: json['next'] as String?,
+        skipped: json['skipped'] as int? ?? 0,
       );
 }
 

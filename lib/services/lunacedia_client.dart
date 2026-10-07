@@ -1,6 +1,7 @@
 import '../config/api_config.dart';
 import '../models/alert.dart';
 import '../models/assistant_identity.dart';
+import '../models/digest.dart';
 import 'backend_client.dart';
 import 'http_transport.dart';
 import 'inbox_api.dart';
@@ -40,9 +41,8 @@ class LunAcediaClient extends BackendClient {
   Future<void> markHubAlertRead(String id) async {}
 
   @override
-  Future<String> getDigest() async {
-    final data = asObject(await _http.get('/api/digest', timeout: HttpTransport.chatTimeout));
-    return data['response'] as String? ?? '';
+  Future<Digest> getDigest() async {
+    return Digest.fromJson(asObject(await _http.get('/api/digest', timeout: HttpTransport.chatTimeout)));
   }
 
   // ── Push token ────────────────────────────────────────────────────────────

@@ -38,7 +38,6 @@ String sourceLabel(BoxItem item) => switch (item.source) {
 String gestureLabel(BoxItem item, BoxGesture g) => switch (g) {
       BoxGesture.open => 'Lire en entier',
       BoxGesture.read => 'Marquer comme lu',
-      BoxGesture.unread => 'Marquer non lu',
       BoxGesture.archive => 'Archiver',
       BoxGesture.trash => 'Corbeille',
       BoxGesture.spam => 'Indésirable',

@@ -1,6 +1,7 @@
 import '../config/api_config.dart';
 import '../models/alert.dart';
 import '../models/assistant_identity.dart';
+import '../models/digest.dart';
 import 'api_service.dart';
 import 'inbox_api.dart';
 import 'validation_api.dart';
@@ -24,7 +25,8 @@ abstract class BackendClient {
   /// The hub's own alerts (system, spend, Discord) — never its copies of box items. Empty on LunAcedia.
   Future<List<Alert>> hubAlerts();
   Future<void> markHubAlertRead(String id);
-  Future<String> getDigest();
+  /// What is still unread: the urgent items listed by LunAcedia, then the model's summary.
+  Future<Digest> getDigest();
   Future<void> registerPushToken(String token);
 }
 

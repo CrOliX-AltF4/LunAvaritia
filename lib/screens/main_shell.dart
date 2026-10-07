@@ -156,10 +156,11 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       // Mark shown on any successful fetch, even an empty digest — otherwise "nothing
       // happened" would retry on every resume until the gap naturally elapses on its own.
       await widget.digestGate.markShown();
-      if (!mounted || digest.trim().isEmpty) return;
+      if (!mounted || digest.isEmpty) return;
       // Not awaited — showModalBottomSheet()'s future resolves when the sheet is dismissed;
       // nothing here depends on knowing that.
-      unawaited(showDigestSheet(context, digest));
+      unawaited(showDigestSheet(context, digest,
+          onOpen: (key) => context.read<ShellController>().go(BoxItemDestination(key))));
     } catch (_) {
       // Silent — an auto-trigger shouldn't nag on a transient/offline failure, and not
       // calling markShown() here means the next resume retries rather than giving up for

@@ -126,6 +126,24 @@ class CitedItem {
 }
 
 /// An action the agent did or proposes: executed, pending (waits for the user), refused, invalid, error.
+/// How an action that waited for Master ended, as the server keeps it (30 days) — a reopened topic shows it.
+class ActionOutcome {
+  const ActionOutcome({required this.status, this.at, this.reason});
+
+  /// pending, confirmed, cancelled, expired, failed, refused.
+  final String status;
+  final DateTime? at;
+
+  /// Why it failed or was refused.
+  final String? reason;
+
+  factory ActionOutcome.fromJson(Map<String, dynamic> json) => ActionOutcome(
+        status: _str(json['status']),
+        at: json['at'] is int ? DateTime.fromMillisecondsSinceEpoch(json['at'] as int) : null,
+        reason: json['reason'] is String ? json['reason'] as String : null,
+      );
+}
+
 class AgentAction {
   const AgentAction({
     required this.kind,
@@ -136,6 +154,7 @@ class AgentAction {
     this.fields = const {},
     this.expiresAt,
     this.summary,
+    this.outcome,
   });
 
   final String kind;
@@ -153,6 +172,9 @@ class AgentAction {
   /// What it does, in LunAcedia's words (« … × 37 — expéditeur contenant … ») — absent from an older server.
   final String? summary;
 
+  /// Where it stands now, as the server says when the topic is read (`state`) — absent from an older server.
+  final ActionOutcome? outcome;
+
   bool get isMemoryProposal => kind == 'propose_memory' || connector == 'memory';
 
   /// Waits for the user, and the user can settle it from the phone (memory proposals are settled in the panel).
@@ -169,6 +191,7 @@ class AgentAction {
       fields: action is Map<String, dynamic> ? action : const {},
       expiresAt: json['expiresAt'] is int ? DateTime.fromMillisecondsSinceEpoch(json['expiresAt'] as int) : null,
       summary: json['summary'] is String ? json['summary'] as String : null,
+      outcome: json['state'] is Map<String, dynamic> ? ActionOutcome.fromJson(json['state'] as Map<String, dynamic>) : null,
     );
   }
 

@@ -169,13 +169,14 @@ void main() {
       expect(shell.current, isA<TrashDestination>());
     });
 
-    testWidgets("the hub's own alerts sit apart, read with « Lu »", (tester) async {
+    testWidgets("the hub's own alerts sit apart; opening one shows its text and marks it read", (tester) async {
       backend.hubAlertList = [
         Alert(
           id: 'h1',
           type: 'system',
           source: AlertSource.system,
           title: 'Dépense du jour',
+          body: 'Seuil de 2 \$ dépassé.',
           priority: AlertPriority.normal,
           ts: DateTime.now(),
           read: false,
@@ -183,10 +184,13 @@ void main() {
       ];
       await pump(tester, const BoxScreen());
       expect(find.text('Du hub'), findsOneWidget);
-      expect(find.text('Dépense du jour'), findsOneWidget);
-      await tester.tap(find.widgetWithText(TextButton, 'Lu'));
+      // Opening is reading: no « Lu » button.
+      expect(find.widgetWithText(TextButton, 'Lu'), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('hub-alert-h1')));
       await tester.pumpAndSettle();
+      expect(find.text('Seuil de 2 \$ dépassé.'), findsOneWidget);
       expect(backend.hubAlertsRead, ['h1']);
+      expect(box.hubAlerts.single.read, isTrue);
     });
 
     testWidgets('no « Du hub » section without hub alerts', (tester) async {
@@ -228,6 +232,30 @@ void main() {
       expect(box.byKey('email-1'), isNull);
     });
 
+    // 2026-10-07: trashed from the sheet of actions, the mail being read stayed on screen.
+    testWidgets('goes back to the box once the item left it, whatever did it', (tester) async {
+      backend.inbox.items = [item('email-1', title: 'Facture')];
+      await box.load();
+      shell.go(const BoxItemDestination('email-1'));
+      await pump(tester, const BoxReaderScreen(itemKey: 'email-1'));
+      await tester.tap(find.byTooltip('Autres gestes'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('box-action-trash')));
+      await tester.pumpAndSettle();
+      expect(backend.inbox.gestures.last, ('email-1', BoxGesture.trash));
+      expect(shell.current, isA<BoxDestination>());
+    });
+
+    testWidgets('offers no « Non lu »: opening is reading', (tester) async {
+      backend.inbox.items = [item('email-1')];
+      await box.load();
+      await pump(tester, const BoxReaderScreen(itemKey: 'email-1'));
+      expect(find.text('Non lu'), findsNothing);
+      await tester.tap(find.byTooltip('Autres gestes'));
+      await tester.pumpAndSettle();
+      expect(find.text('Marquer non lu'), findsNothing);
+    });
+
     testWidgets('says when the item is no longer in the box', (tester) async {
       await pump(tester, const BoxReaderScreen(itemKey: 'gone'));
       expect(find.text("Cet élément n'est plus dans la boîte."), findsOneWidget);
@@ -251,6 +279,24 @@ void main() {
       await tester.pumpAndSettle();
       expect(backend.inbox.restored, ['m9']);
       expect(find.text('Relevé'), findsNothing);
+    });
+
+    testWidgets('reads the trash a page at a time, and says what Gmail could not give', (tester) async {
+      backend.inbox.trashPageSize = 1;
+      backend.inbox.trashSkipped = 2;
+      backend.inbox.trashed = [
+        TrashItem(id: 'm1', title: 'Premier', from: 'A', ts: DateTime.now()),
+        TrashItem(id: 'm2', title: 'Second', from: 'B', ts: DateTime.now()),
+      ];
+      await pump(tester, const TrashScreen());
+      expect(find.text('Premier'), findsOneWidget);
+      expect(find.text('Second'), findsNothing);
+      expect(find.text('2 mails illisibles dans Gmail : absents de cette liste.'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('trash-more')));
+      await tester.pumpAndSettle();
+      expect(find.text('Second'), findsOneWidget);
+      expect(backend.inbox.trashPages, [null, '1']);
+      expect(find.byKey(const ValueKey('trash-more')), findsNothing);
     });
   });
 }

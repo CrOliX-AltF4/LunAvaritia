@@ -2,10 +2,12 @@ import 'package:lunavaritia/config/api_config.dart';
 import 'package:lunavaritia/models/alert.dart';
 import 'package:lunavaritia/models/assistant_identity.dart';
 import 'package:lunavaritia/models/box_item.dart';
+import 'package:lunavaritia/models/digest.dart';
 import 'package:lunavaritia/models/topic.dart';
 import 'package:lunavaritia/services/backend_client.dart';
 import 'package:lunavaritia/services/http_transport.dart';
 import 'package:lunavaritia/services/inbox_api.dart';
+import 'package:lunavaritia/services/notification_tray.dart';
 import 'package:lunavaritia/services/validation_api.dart';
 import 'package:lunavaritia/services/topic_api.dart';
 import 'package:lunavaritia/services/update_checker.dart';
@@ -118,7 +120,7 @@ class FakeTopicApi extends TopicApi {
   }
 }
 
-/// The box in memory: gestures recorded, "removed" takes the item out, read/unread flip it.
+/// The box in memory: gestures recorded, "removed" takes the item out, read marks it read.
 class FakeInboxApi extends InboxApi {
   FakeInboxApi() : super(HttpTransport(ApiConfig.forTest(baseUrl: 'http://fake')), path: '/i');
 
@@ -142,7 +144,6 @@ class FakeInboxApi extends InboxApi {
     if (gestureError != null) throw gestureError!;
     final change = switch (gesture) {
       BoxGesture.open || BoxGesture.read => BoxChange.read,
-      BoxGesture.unread => BoxChange.unread,
       BoxGesture.archive || BoxGesture.trash || BoxGesture.spam || BoxGesture.done => BoxChange.removed,
     };
     if (change == BoxChange.removed) {
@@ -153,8 +154,22 @@ class FakeInboxApi extends InboxApi {
     return GestureResult(change: change, body: gesture == BoxGesture.open ? openBody : null);
   }
 
+  /// The trash in pages of [trashPageSize]; [trashSkipped] said by the first page.
+  int trashPageSize = 50;
+  int trashSkipped = 0;
+  final List<String?> trashPages = [];
+
   @override
-  Future<List<TrashItem>> trash() async => List.of(trashed);
+  Future<TrashPage> trash({String? page}) async {
+    trashPages.add(page);
+    final start = page == null ? 0 : int.parse(page);
+    final end = (start + trashPageSize).clamp(0, trashed.length);
+    return TrashPage(
+      items: trashed.sublist(start, end),
+      next: end < trashed.length ? '$end' : null,
+      skipped: page == null ? trashSkipped : 0,
+    );
+  }
 
   @override
   Future<void> restore(String messageId) async {
@@ -205,10 +220,11 @@ class FakeValidationApi extends ValidationApi {
 }
 
 class FakeBackend extends BackendClient {
-  FakeBackend({this.digest = '', this.digestError, AssistantIdentity? identity})
+  FakeBackend({this.digest = '', this.digestUrgent = const [], this.digestError, AssistantIdentity? identity})
       : identity = identity ?? const AssistantIdentity(name: 'Natsume', isCompanion: true);
 
   final String digest;
+  final List<DigestUrgent> digestUrgent;
   final Object? digestError;
   final AssistantIdentity identity;
 
@@ -238,13 +254,29 @@ class FakeBackend extends BackendClient {
   Future<void> markHubAlertRead(String id) async => hubAlertsRead.add(id);
 
   @override
-  Future<String> getDigest() async {
+  Future<Digest> getDigest() async {
     if (digestError != null) throw digestError!;
-    return digest;
+    return Digest(summary: digest, urgent: digestUrgent);
   }
 
   @override
   Future<void> registerPushToken(String token) async {}
+}
+
+/// The notification shade: what is shown (by tag), what the app took down.
+class FakeTray implements NotificationTray {
+  FakeTray([List<String> shown = const []]) : shown = List.of(shown);
+  final List<String> shown;
+  final List<String> dismissed = [];
+
+  @override
+  Future<void> dismiss(String tag) async {
+    dismissed.add(tag);
+    shown.remove(tag);
+  }
+
+  @override
+  Future<List<String>> shownTags() async => List.of(shown);
 }
 
 /// Answers a fixed status — the real checker would ask GitHub.

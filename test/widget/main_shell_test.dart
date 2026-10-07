@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:lunavaritia/models/digest.dart';
 import 'package:lunavaritia/models/box_item.dart';
 import 'package:lunavaritia/services/validation_api.dart';
 import 'package:lunavaritia/providers/box_controller.dart';
@@ -69,6 +70,26 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Overnight: 3 emails, 1 meeting.'), findsOneWidget);
+    });
+
+    // 2026-10-07: the digest called urgent what the box did not — the urgent items now come listed by LunAcedia.
+    testWidgets('lists the urgent items with why, and a tap opens one in the reader', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final shell = ShellController();
+      final backend = FakeBackend(
+        digest: 'Deux newsletters.',
+        digestUrgent: const [DigestUrgent(key: 'email-1', title: 'Du syndic', priorityReason: 'VIP')],
+      );
+
+      await tester.pumpWidget(_buildShell(backend, shell: shell, digestGate: const DigestGate(minGap: Duration.zero)));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Urgent (1)'), findsOneWidget);
+      expect(find.text('VIP'), findsOneWidget);
+      expect(find.text('Deux newsletters.'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('digest-urgent-email-1')));
+      await tester.pumpAndSettle();
+      expect(shell.current, isA<BoxItemDestination>().having((d) => d.key, 'key', 'email-1'));
     });
 
     testWidgets('does not show the digest sheet when the gate blocks it', (tester) async {

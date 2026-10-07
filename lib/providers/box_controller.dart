@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../models/alert.dart';
 import '../models/box_item.dart';
 import '../models/digest.dart';
 import '../services/backend_client.dart';
+import '../services/notification_tray.dart';
 
 /// Chips of the box (DA1): every source, or one.
 enum BoxFilter { all, email, calendar, github, tasks }
@@ -46,6 +49,7 @@ class BoxController extends ChangeNotifier {
     try {
       _items = (await _api.inbox.list()).items;
       error = null;
+      _boxLoaded = true;
     } on BackendError catch (e) {
       error = e.message;
     } catch (e) {
@@ -60,6 +64,26 @@ class BoxController extends ChangeNotifier {
     loading = false;
     loaded = true;
     notifyListeners();
+    await _sweepTray();
+  }
+
+  bool _boxLoaded = false;
+
+  /// Takes down the notifications whose object is settled — read or gone from the box, a hub alert read — whatever
+  /// settled it (another device, the panel, the source itself). Actions are « À valider »'s to sweep.
+  Future<void> _sweepTray() async {
+    if (!_boxLoaded) return;
+    final tray = NotificationTray.instance;
+    for (final tag in await tray.shownTags()) {
+      if (tag.startsWith('action-')) continue;
+      if (tag.startsWith('alert-')) {
+        final id = tag.substring('alert-'.length);
+        if (_hubAlerts.any((a) => a.id == id && a.read)) await tray.dismiss(tag);
+        continue;
+      }
+      final item = byKey(tag);
+      if (item == null || item.read) await tray.dismiss(tag);
+    }
   }
 
   void setFilter(BoxFilter f) {
@@ -87,6 +111,8 @@ class BoxController extends ChangeNotifier {
   }
 
   void _adopt(String key, BoxChange? change) {
+    // Read or gone: its notification has nothing left to say.
+    if (change == BoxChange.removed || change == BoxChange.read) unawaited(NotificationTray.instance.dismiss(key));
     switch (change) {
       case BoxChange.removed:
         _items = _items.where((i) => i.key != key).toList();
@@ -104,6 +130,7 @@ class BoxController extends ChangeNotifier {
 
   Future<void> markHubAlertRead(String id) async {
     await _api.markHubAlertRead(id);
+    unawaited(NotificationTray.instance.dismiss('alert-$id'));
     _hubAlerts = [for (final a in _hubAlerts) a.id == id ? a.copyWith(read: true) : a];
     notifyListeners();
   }

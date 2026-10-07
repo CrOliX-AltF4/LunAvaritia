@@ -11,7 +11,20 @@ import 'package:lunavaritia/screens/topic_screen.dart';
 import 'package:lunavaritia/services/backend_client.dart';
 import 'package:lunavaritia/theme/app_theme.dart';
 
+import 'package:lunavaritia/services/notification_tray.dart';
+
 import '../support/fakes.dart';
+
+/// Records what the app takes down from the notification shade.
+class _FakeTray implements NotificationTray {
+  final List<String> dismissed = [];
+  @override
+  Future<void> dismiss(String tag) async => dismissed.add(tag);
+  @override
+  Future<List<String>> shownTags() async => const [];
+}
+
+String _hm(DateTime t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
 // The topic in progress: what an answer cites, and the actions settled where they appear.
 
@@ -77,8 +90,61 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(backend.topics.decisions, [('act-1', true)]);
-    expect(find.text('Confirmé — fait.'), findsOneWidget);
+    expect(find.text('Confirmé par toi à ${_hm(DateTime.now())} — fait.'), findsOneWidget);
     expect(find.text('Confirmer'), findsNothing);
+  });
+
+  testWidgets('a decision takes the action\'s notification down', (tester) async {
+    final tray = _FakeTray();
+    NotificationTray.instance = tray;
+    addTearDown(() => NotificationTray.instance = _FakeTray());
+    await _pump(tester, [answer('m2', 'Voici.', agent: _outcome(actions: [_reply]))]);
+    await tester.tap(find.text('Confirmer'));
+    await tester.pumpAndSettle();
+    expect(tray.dismissed, ['action-act-1']);
+  });
+
+  // 2026-10-07: a card stayed active once its action was decided elsewhere — a deletion could be confirmed again.
+  testWidgets('reopened, a decided action shows how it ended, when and by whom, with nothing to press', (tester) async {
+    final when = DateTime.now().subtract(const Duration(minutes: 20));
+    await _pump(tester, [
+      answer('m2', 'Voici.', when: at(30), agent: _outcome(actions: [
+        AgentAction.fromJson({
+          'kind': 'delete_event', 'status': 'pending', 'id': 'act-2', 'connector': 'Calendar',
+          'action': {'kind': 'delete_event', 'sourceId': 'primary/ev1'},
+          'expiresAt': DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch,
+          'state': {'status': 'confirmed', 'at': when.millisecondsSinceEpoch, 'kind': 'delete_event'},
+        }),
+      ])),
+    ]);
+    expect(find.text('Confirmé par toi à ${_hm(when)} — fait.'), findsOneWidget);
+    expect(find.text('Confirmer'), findsNothing);
+    expect(find.text('Annuler'), findsNothing);
+  });
+
+  testWidgets('an action that failed at the source says why, with nothing to press', (tester) async {
+    final when = DateTime.now().subtract(const Duration(minutes: 5));
+    await _pump(tester, [
+      answer('m2', 'Voici.', agent: _outcome(actions: [
+        AgentAction.fromJson({
+          'kind': 'delete_event', 'status': 'pending', 'id': 'act-3', 'connector': 'Calendar',
+          'action': {'kind': 'delete_event', 'sourceId': 'primary/ev1'},
+          'state': {'status': 'failed', 'at': when.millisecondsSinceEpoch, 'kind': 'delete_event', 'reason': 'event no longer exists'},
+        }),
+      ])),
+    ]);
+    expect(find.text('Pas fait (${_hm(when)}) : event no longer exists'), findsOneWidget);
+    expect(find.text('Confirmer'), findsNothing);
+  });
+
+  testWidgets('an action done at its own tier says it was automatic, and when', (tester) async {
+    final when = DateTime.now().subtract(const Duration(minutes: 3));
+    await _pump(tester, [
+      answer('m2', 'Archivé.', when: when, agent: _outcome(actions: [
+        const AgentAction(kind: 'archive_email', status: 'executed', connector: 'Gmail', fields: {'sourceId': 'm1'}),
+      ])),
+    ]);
+    expect(find.text('Fait automatiquement à ${_hm(when)}.'), findsOneWidget);
   });
 
   testWidgets('cancelling does nothing but say so', (tester) async {
@@ -86,7 +152,7 @@ void main() {
     await tester.tap(find.text('Annuler'));
     await tester.pumpAndSettle();
     expect(backend.topics.decisions, [('act-1', false)]);
-    expect(find.text('Annulé — rien n’a été fait.'), findsOneWidget);
+    expect(find.text('Annulé par toi à ${_hm(DateTime.now())} — rien n’a été fait.'), findsOneWidget);
   });
 
   testWidgets('an action LunAcedia no longer holds shows as expired, with nothing to press', (tester) async {

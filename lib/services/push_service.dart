@@ -6,6 +6,7 @@ import '../config/api_config.dart';
 import 'backend_client.dart';
 import 'deep_link_router.dart';
 import 'lunacedia_client.dart';
+import 'notification_tray.dart';
 
 /// Sends this phone's notification token to the server [config] talks to. Called right after a pairing (live
 /// check V3): at startup an unpaired phone is refused, and nothing used to send the token again until a restart.
@@ -48,6 +49,8 @@ class PushService {
 
   Future<void> init() async {
     FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
+    // The controllers take a notification down by its tag once its object is settled.
+    NotificationTray.instance = LocalNotificationTray(_localNotifications);
 
     await _localNotifications
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
@@ -89,8 +92,10 @@ class PushService {
       final notification = message.notification;
       final android = message.notification?.android;
       if (notification != null && android != null) {
+        // Tagged like the servers tag theirs (id 0, FCM's rule), so it can be taken down the same way.
+        final tag = notificationTagOf(message.data);
         _localNotifications.show(
-          notification.hashCode,
+          tag == null ? notification.hashCode : 0,
           notification.title,
           notification.body,
           NotificationDetails(
@@ -100,6 +105,7 @@ class PushService {
               channelDescription: _channel.description,
               importance: Importance.high,
               priority: Priority.high,
+              tag: tag,
             ),
           ),
           // Carried through to onDidReceiveNotificationResponse above if the user taps

@@ -7,6 +7,7 @@ import 'package:lunavaritia/models/topic.dart';
 import 'package:lunavaritia/services/backend_client.dart';
 import 'package:lunavaritia/services/http_transport.dart';
 import 'package:lunavaritia/services/inbox_api.dart';
+import 'package:lunavaritia/services/notification_tray.dart';
 import 'package:lunavaritia/services/validation_api.dart';
 import 'package:lunavaritia/services/topic_api.dart';
 import 'package:lunavaritia/services/update_checker.dart';
@@ -260,6 +261,22 @@ class FakeBackend extends BackendClient {
 
   @override
   Future<void> registerPushToken(String token) async {}
+}
+
+/// The notification shade: what is shown (by tag), what the app took down.
+class FakeTray implements NotificationTray {
+  FakeTray([List<String> shown = const []]) : shown = List.of(shown);
+  final List<String> shown;
+  final List<String> dismissed = [];
+
+  @override
+  Future<void> dismiss(String tag) async {
+    dismissed.add(tag);
+    shown.remove(tag);
+  }
+
+  @override
+  Future<List<String>> shownTags() async => List.of(shown);
 }
 
 /// Answers a fixed status — the real checker would ask GitHub.

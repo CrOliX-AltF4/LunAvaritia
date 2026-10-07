@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../services/backend_client.dart';
+import '../services/notification_tray.dart';
 import '../services/validation_api.dart';
 
 /// « À valider »: what waits for Master — the hub's memory proposals (wired) and LunAcedia's pending
@@ -21,9 +24,11 @@ class ValidationController extends ChangeNotifier {
   int get count => writes.length + proposals.length;
 
   Future<void> load() async {
+    var read = false;
     try {
       writes = await _api.validation.actions();
       error = null;
+      read = true;
     } on BackendError catch (e) {
       error = e.message;
     }
@@ -35,11 +40,20 @@ class ValidationController extends ChangeNotifier {
     }
     loaded = true;
     notifyListeners();
+    // An action no longer waiting — decided elsewhere, expired — takes its notification down.
+    if (read) {
+      final waiting = {for (final w in writes) 'action-${w.id}'};
+      final tray = NotificationTray.instance;
+      for (final tag in await tray.shownTags()) {
+        if (tag.startsWith('action-') && !waiting.contains(tag)) await tray.dismiss(tag);
+      }
+    }
   }
 
   /// Null when done; otherwise why it was not.
   Future<String?> decide(PendingWrite w, {required bool confirm}) => _run(() async {
         await _api.validation.decide(w.id, confirm: confirm);
+        unawaited(NotificationTray.instance.dismiss('action-${w.id}'));
         writes = writes.where((x) => x.id != w.id).toList();
       });
 

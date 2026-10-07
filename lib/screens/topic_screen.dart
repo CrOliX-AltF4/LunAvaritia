@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -6,6 +8,7 @@ import '../models/topic.dart';
 import '../providers/shell_controller.dart';
 import '../providers/topic_controller.dart';
 import '../providers/topics_provider.dart';
+import '../providers/validation_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shell_widgets.dart';
 
@@ -320,7 +323,7 @@ class ActionCard extends StatelessWidget {
     if (!action.isDecidable) {
       return Text(
         switch (action.status) {
-          'executed' => 'Fait.',
+          'executed' => 'Fait automatiquement à ${decisionTime(message.at)}.',
           'refused' => 'Refusé${action.reason != null ? ' : ${action.reason}' : '.'}',
           _ => 'Pas fait${action.reason != null ? ' : ${action.reason}' : '.'}',
         },
@@ -330,6 +333,8 @@ class ActionCard extends StatelessWidget {
     final controller = context.watch<TopicController>();
     final state = controller.decisionOf(message, action);
     final left = controller.remainingFor(message, action);
+    final at = controller.decidedAtOf(action);
+    final when = at == null ? '' : ' à ${decisionTime(at)}';
     return switch (state) {
       DecisionState.waiting || DecisionState.failed || DecisionState.deciding => Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -343,14 +348,14 @@ class ActionCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: FilledButton(
-                    onPressed: state == DecisionState.deciding ? null : () => controller.decide(action, confirm: true),
+                    onPressed: state == DecisionState.deciding ? null : () => _decide(context, controller, true),
                     child: const Text('Confirmer'),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: state == DecisionState.deciding ? null : () => controller.decide(action, confirm: false),
+                    onPressed: state == DecisionState.deciding ? null : () => _decide(context, controller, false),
                     child: const Text('Annuler'),
                   ),
                 ),
@@ -363,12 +368,32 @@ class ActionCard extends StatelessWidget {
             ),
           ],
         ),
-      DecisionState.confirmed => Text('Confirmé — fait.', style: da(size: 13, color: Palette.lune)),
-      DecisionState.cancelled => Text('Annulé — rien n’a été fait.', style: da(size: 13, color: Palette.lune)),
+      DecisionState.confirmed => Text('Confirmé par toi$when — fait.', style: da(size: 13, color: Palette.lune)),
+      DecisionState.cancelled =>
+        Text('Annulé par toi$when — rien n’a été fait.', style: da(size: 13, color: Palette.lune)),
       DecisionState.expired =>
-        Text('Expiré — rien n’a été fait. Redemandez dans le sujet.', style: da(size: 13, color: Palette.lune)),
+        Text('Expiré$when — rien n’a été fait. Redemande dans le sujet.', style: da(size: 13, color: Palette.lune)),
+      DecisionState.notDone => Text(
+          'Pas fait${at == null ? '' : ' (${decisionTime(at)})'} : ${controller.decisionErrorOf(action) ?? 'refusé'}',
+          style: da(size: 13, color: Palette.lune)),
     };
   }
+
+  /// Decided here: « À valider » follows at once (the same action leaves it), when it is around.
+  Future<void> _decide(BuildContext context, TopicController controller, bool confirm) async {
+    await controller.decide(action, confirm: confirm);
+    if (!context.mounted) return;
+    final validation = context.read<ValidationController?>();
+    if (validation != null) unawaited(validation.load());
+  }
+}
+
+/// « 14:32 » today, « 07/10 14:32 » another day.
+String decisionTime(DateTime t) {
+  final now = DateTime.now();
+  final hm = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  final today = t.year == now.year && t.month == now.month && t.day == now.day;
+  return today ? hm : '${t.day.toString().padLeft(2, '0')}/${t.month.toString().padLeft(2, '0')} $hm';
 }
 
 /// « moins d'une minute », « 12 min », « 1 h 30 », « 23 h » — a pending write may wait up to a day.

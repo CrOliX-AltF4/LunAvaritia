@@ -91,6 +91,48 @@ void main() {
     expect(find.text('Pour la mémoire'), findsNothing);
   });
 
+  // The memory asks only real questions; each answer says what it does.
+  testWidgets('a contradiction asks which one is right', (tester) async {
+    backend.validation.proposalList = [
+      MemoryProposal(
+          id: 'p1', text: 'Habite à Paris', editableText: 'Habite à Paris', origin: 'chat', ts: DateTime.now(),
+          conflictText: 'Habite à Lyon'),
+    ];
+    await pump(tester);
+    expect(find.textContaining('Contredit : « Habite à Lyon »'), findsOneWidget);
+    expect(find.text('Retenir'), findsNothing);
+    await tester.tap(find.text('Le nouveau est juste'));
+    await tester.pumpAndSettle();
+    expect(backend.validation.approved, [('p1', null)]);
+  });
+
+  testWidgets('a near repeat asks « the same thing? » — « Même chose » drops it', (tester) async {
+    backend.validation.proposalList = [
+      MemoryProposal(
+          id: 'p1', text: 'Joue à osu tous les soirs', editableText: '', origin: 'chat', ts: DateTime.now(),
+          duplicateText: 'Joue à osu! chaque soir'),
+    ];
+    await pump(tester);
+    expect(find.textContaining('Ressemble à : « Joue à osu! chaque soir »'), findsOneWidget);
+    await tester.tap(find.text('Même chose'));
+    await tester.pumpAndSettle();
+    expect(backend.validation.rejected, ['p1']);
+  });
+
+  testWidgets('shows what was written unasked, with what was said, and « Annuler » takes it back', (tester) async {
+    backend.validation.unaskedList = [
+      UnaskedFact(speakerId: 'master', id: 'f1', text: 'Aime le thé vert', at: DateTime.now(), source: 'J’adore le thé vert'),
+    ];
+    await pump(tester);
+    expect(find.text('Écrits sans demander'), findsOneWidget);
+    expect(find.text('Tu avais dit : « J’adore le thé vert »'), findsOneWidget);
+    await tester.tap(find.widgetWithText(TextButton, 'Annuler'));
+    await tester.pumpAndSettle();
+    expect(backend.validation.undone, ['f1']);
+    expect(find.text('Écrits sans demander'), findsNothing);
+    expect(validation.count, 0);
+  });
+
   testWidgets('standalone: no memory section, and says when nothing waits', (tester) async {
     backend = FakeBackend();
     await pump(tester);

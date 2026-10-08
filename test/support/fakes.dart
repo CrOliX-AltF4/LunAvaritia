@@ -182,13 +182,15 @@ class FakeInboxApi extends InboxApi {
 class FakeValidationApi extends ValidationApi {
   FakeValidationApi({bool hub = true})
       : super(HttpTransport(ApiConfig.forTest(baseUrl: 'http://fake')),
-            actionsPath: '/a', pendingPath: '/a/p', proposalsPath: hub ? '/p' : null);
+            actionsPath: '/a', pendingPath: '/a/p', proposalsPath: hub ? '/p' : null, unaskedPath: hub ? '/u' : null);
 
   List<PendingWrite> writes = [];
   List<MemoryProposal> proposalList = [];
   final List<(String, bool)> decisions = [];
   final List<(String, String?)> approved = [];
   final List<String> rejected = [];
+  List<UnaskedFact> unaskedList = [];
+  final List<String> undone = [];
   Object? decideError;
   Object? approveError;
 
@@ -216,6 +218,15 @@ class FakeValidationApi extends ValidationApi {
   Future<void> reject(String id) async {
     rejected.add(id);
     proposalList.removeWhere((p) => p.id == id);
+  }
+
+  @override
+  Future<List<UnaskedFact>> unasked() async => hasMemory ? List.of(unaskedList) : const [];
+
+  @override
+  Future<void> undo(UnaskedFact f) async {
+    undone.add(f.id);
+    unaskedList.removeWhere((u) => u.id == f.id);
   }
 }
 

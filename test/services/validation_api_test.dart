@@ -112,7 +112,37 @@ void main() {
     final api = ValidationApi.lunacedia(transport);
     expect(api.hasMemory, isFalse);
     expect(await api.proposals(), isEmpty);
+    expect(await api.unasked(), isEmpty);
     expect(sent, isEmpty);
+  });
+
+  test('wired: a memory question carries the fact it is about', () async {
+    final list = await withServer(
+      (_) => {
+        'proposals': [
+          {'id': 'p1', 'origin': 'chat', 'ts': 1, 'conflictText': 'Habite à Lyon', 'payload': {'kind': 'add_fact', 'speakerId': 'master', 'text': 'Habite à Paris'}},
+          {'id': 'p2', 'origin': 'chat', 'ts': 2, 'duplicateText': 'Joue à osu!', 'payload': {'kind': 'add_fact', 'speakerId': 'master', 'text': 'Joue à osu'}},
+        ]
+      },
+      () => ValidationApi.hub(transport).proposals(),
+    );
+    expect(list.map((p) => (p.conflictText, p.duplicateText)), [('Habite à Lyon', null), (null, 'Joue à osu!')]);
+  });
+
+  test('wired: reads what was written unasked, and « Annuler » posts to its own path', () async {
+    final facts = await withServer(
+      (_) => {
+        'facts': [
+          {'speakerId': 'master', 'id': 'f 1', 'text': 'Aime le thé', 'timestamp': 5, 'source': 'J’aime le thé'},
+        ]
+      },
+      () => ValidationApi.hub(transport).unasked(),
+    );
+    expect(facts.single.source, 'J’aime le thé');
+    expect(sent.last.url.path, '/api/mobile/unasked');
+    await withServer((_) => {'ok': true}, () => ValidationApi.hub(transport).undo(facts.single));
+    expect(sent.last.method, 'POST');
+    expect(sent.last.url.toString(), 'http://srv:4001/api/mobile/unasked/master/f%201/undo');
   });
 
   test('says why a decision was refused', () async {

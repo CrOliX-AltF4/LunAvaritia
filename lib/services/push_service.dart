@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -18,10 +19,32 @@ Future<void> registerPushTokenWith(ApiConfig config) async {
   } catch (_) {}
 }
 
-// Top-level handler required by Firebase for background messages
+// Top-level handler required by Firebase for background messages. The ones to show are shown by FCM itself on
+// Android; the silent ones say which notifications are settled elsewhere — taken down here, the app staying closed.
 @pragma('vm:entry-point')
 Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
-  // Background messages are shown automatically by FCM on Android
+  final tags = settledTagsOf(message.data);
+  if (tags.isEmpty) return;
+  final plugin = FlutterLocalNotificationsPlugin();
+  try {
+    await plugin.initialize(const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')));
+  } catch (_) {}
+  await dismissSettled(LocalNotificationTray(plugin), tags);
+}
+
+/// The tags a silent « settled » message names (both servers send `{type: settled, tags: "a,b"}`); empty otherwise.
+List<String> settledTagsOf(Map<String, dynamic> data) {
+  if (data['type'] != 'settled') return const [];
+  final tags = data['tags'];
+  if (tags is! String) return const [];
+  return [for (final t in tags.split(',')) if (t.trim().isNotEmpty) t.trim()];
+}
+
+/// Takes down each settled notification — one that is not shown changes nothing.
+Future<void> dismissSettled(NotificationTray tray, List<String> tags) async {
+  for (final tag in tags) {
+    await tray.dismiss(tag);
+  }
 }
 
 /// Takes this phone off LunAcedia's notifications as it moves to a hub: wired, the hub sends them,
@@ -87,6 +110,12 @@ class PushService {
 
     // Foreground message display
     FirebaseMessaging.onMessage.listen((message) {
+      // Settled elsewhere: nothing to show, its notification goes (the open views follow the stream of changes).
+      final settled = settledTagsOf(message.data);
+      if (settled.isNotEmpty) {
+        unawaited(dismissSettled(NotificationTray.instance, settled));
+        return;
+      }
       // The app is open: the box may have changed.
       DeepLinkRouter.instance.nudgeBox();
       final notification = message.notification;

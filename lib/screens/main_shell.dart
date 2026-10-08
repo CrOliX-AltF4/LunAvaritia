@@ -10,6 +10,7 @@ import '../providers/topic_controller.dart';
 import '../providers/topics_provider.dart';
 import '../providers/validation_controller.dart';
 import '../services/backend_client.dart';
+import '../services/change_stream.dart';
 import '../services/deep_link_router.dart';
 import '../services/digest_gate.dart';
 import '../services/update_checker.dart';
@@ -37,6 +38,7 @@ class MainShell extends StatefulWidget {
     DeepLinkRouter? deepLinkRouter,
     UpdateChecker? updateChecker,
     this.settings,
+    this.changeStream,
   })  : deepLinkRouter = deepLinkRouter ?? DeepLinkRouter.instance,
         updateChecker = updateChecker ?? UpdateChecker();
 
@@ -60,15 +62,23 @@ class MainShell extends StatefulWidget {
   /// Overridable for tests — the real settings screen probes the server.
   final Widget? settings;
 
+  /// What changed on the server, followed while the app is in front (lot S). Null: nothing followed (tests).
+  final ChangeStream? changeStream;
+
   @override
   State<MainShell> createState() => _MainShellState();
 }
 
 class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
+  late final ChangeBursts _bursts = ChangeBursts(_onChanged);
+  StreamSubscription<Change>? _changes;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _changes = widget.changeStream?.changes.listen(_bursts.add);
+    widget.changeStream?.start();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       // What the drawer and the home screen show: who answers, the topics, the box's counts.
@@ -94,6 +104,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     widget.deepLinkRouter.removeListener(_onDeepLinkRequested);
     widget.deepLinkRouter.boxNudges.removeListener(_onBoxNudged);
+    unawaited(_changes?.cancel());
+    _bursts.cancel();
+    widget.changeStream?.stop();
     super.dispose();
   }
 
@@ -126,9 +139,37 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     unawaited(context.read<ValidationController>().load());
   }
 
+  /// A burst of changes in one scope: what shows it is read again — the open topic follows on its own.
+  void _onChanged(String scope, List<Change> changes) {
+    if (!mounted) return;
+    switch (scope) {
+      case 'box' || 'alerts':
+        unawaited(context.read<BoxController>().load());
+      case 'actions' || 'memory':
+        unawaited(context.read<ValidationController>().load());
+      case 'topics':
+        unawaited(context.read<TopicsProvider>().refresh());
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _maybeShowDigest();
+    final stream = widget.changeStream;
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // Back in front: what changed meanwhile is read once, then followed again.
+        if (stream != null && !stream.running) {
+          stream.start();
+          _onBoxNudged();
+        }
+        _maybeShowDigest();
+      case AppLifecycleState.paused || AppLifecycleState.hidden || AppLifecycleState.detached:
+        // Out of sight: no connection kept (battery) — the silent pushes take notifications down meanwhile.
+        stream?.stop();
+        _bursts.cancel();
+      case AppLifecycleState.inactive:
+        break;
+    }
   }
 
   Future<void> _maybeOfferUpdate() async {
@@ -178,7 +219,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
               final opened = topics.lastOpened?.topic.id == id ? topics.lastOpened : null;
               // The first answer is shown as it came — not asked for again.
               if (opened != null) topics.lastOpened = null;
-              return TopicController(context.read<BackendClient>(), id, opened: opened);
+              return TopicController(context.read<BackendClient>(), id,
+                  opened: opened, changes: widget.changeStream?.changes);
             },
             child: const TopicScreen(),
           ),

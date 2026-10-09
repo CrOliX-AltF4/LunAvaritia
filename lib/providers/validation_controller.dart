@@ -15,6 +15,9 @@ class ValidationController extends ChangeNotifier {
 
   List<PendingWrite> writes = [];
   List<MemoryProposal> proposals = [];
+
+  /// Written without asking (wired) — nothing to decide, shown so it can be taken back. Not counted in [count].
+  List<UnaskedFact> unasked = [];
   bool loaded = false;
   String? error;
 
@@ -37,6 +40,11 @@ class ValidationController extends ChangeNotifier {
       proposals = await _api.validation.proposals();
     } catch (_) {
       proposals = [];
+    }
+    try {
+      unasked = await _api.validation.unasked();
+    } catch (_) {
+      unasked = [];
     }
     loaded = true;
     notifyListeners();
@@ -66,6 +74,12 @@ class ValidationController extends ChangeNotifier {
   Future<String?> reject(MemoryProposal p) => _run(() async {
         await _api.validation.reject(p.id);
         proposals = proposals.where((x) => x.id != p.id).toList();
+      });
+
+  /// « Annuler » on what was written unasked: gone, and it does not come back.
+  Future<String?> undo(UnaskedFact f) => _run(() async {
+        await _api.validation.undo(f);
+        unasked = unasked.where((x) => x.id != f.id).toList();
       });
 
   Future<String?> _run(Future<void> Function() step) async {

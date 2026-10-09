@@ -9,8 +9,9 @@ import '../theme/app_theme.dart';
 import '../widgets/shell_widgets.dart';
 import 'topic_screen.dart' show expiresIn;
 
-/// « À valider » (maquette DA1): the hub's memory proposals (wired) — Retenir, Modifier, Écarter —
-/// and LunAcedia's pending writes — Confirmer, Annuler — each with what it would do and when it expires.
+/// « À valider » (maquette DA1): the hub's memory questions (wired) — Retenir, Modifier, Écarter, or the answer to a
+/// contradiction or a near repeat — what it wrote without asking, with Annuler, and LunAcedia's pending writes —
+/// Confirmer, Annuler — each with what it would do and when it expires.
 class ValidateScreen extends StatefulWidget {
   const ValidateScreen({super.key});
 
@@ -49,6 +50,12 @@ class _ValidateScreenState extends State<ValidateScreen> {
               const _Title('Pour la mémoire'),
               for (final p in v.proposals)
                 _ProposalCard(key: ValueKey('proposal-${p.id}'), proposal: p, onError: (e) => _say(e, 'Mémoire')),
+              const SizedBox(height: 20),
+            ],
+            if (v.unasked.isNotEmpty) ...[
+              const _Title('Écrits sans demander'),
+              for (final f in v.unasked)
+                _UnaskedCard(key: ValueKey('unasked-${f.id}'), fact: f, onError: (e) => _say(e, 'Mémoire')),
               const SizedBox(height: 20),
             ],
             if (v.writes.isNotEmpty) ...[
@@ -111,10 +118,29 @@ class _ProposalCardState extends State<_ProposalCard> {
     widget.onError(error);
   }
 
+  /// A question's two answers — each says what it does (the hub does the gesture: replace, or leave as it was).
+  List<Widget> _answers(MemoryProposal p, {required String keep, required String drop}) => [
+        Expanded(
+          child: OutlinedButton(onPressed: _busy ? null : () => _act((v) => v.approve(p)), child: Text(keep)),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: TextButton(onPressed: _busy ? null : () => _act((v) => v.reject(p)), child: Text(drop)),
+        ),
+      ];
+
   @override
   Widget build(BuildContext context) {
     final p = widget.proposal;
     final edit = _edit;
+    // A question (contradiction, near repeat) has its own two answers; nothing to reword there.
+    final answers = edit != null
+        ? null
+        : p.conflictText != null
+            ? _answers(p, keep: 'Le nouveau est juste', drop: 'L’ancien est juste')
+            : p.duplicateText != null
+                ? _answers(p, keep: 'Différent, retenir', drop: 'Même chose')
+                : null;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -127,9 +153,18 @@ class _ProposalCardState extends State<_ProposalCard> {
           else
             TextField(
                 controller: edit, maxLines: null, decoration: const InputDecoration(labelText: 'Texte à retenir')),
+          if (edit == null && (p.conflictText ?? p.duplicateText) != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              p.conflictText != null
+                  ? 'Contredit : « ${p.conflictText} » — le retenir remplace l’ancien.'
+                  : 'Ressemble à : « ${p.duplicateText} » — est-ce la même chose ?',
+              style: da(size: 12.5, color: Palette.lune, height: 1.4),
+            ),
+          ],
           const SizedBox(height: 10),
           Row(
-            children: edit == null
+            children: answers ?? (edit == null
                 ? [
                     Expanded(
                       child: OutlinedButton(
@@ -163,7 +198,51 @@ class _ProposalCardState extends State<_ProposalCard> {
                     ),
                     const SizedBox(width: 8),
                     TextButton(onPressed: () => setState(() => _edit = null), child: const Text('Annuler')),
-                  ],
+                  ]),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UnaskedCard extends StatefulWidget {
+  const _UnaskedCard({super.key, required this.fact, required this.onError});
+  final UnaskedFact fact;
+  final ValueChanged<String?> onError;
+
+  @override
+  State<_UnaskedCard> createState() => _UnaskedCardState();
+}
+
+class _UnaskedCardState extends State<_UnaskedCard> {
+  bool _busy = false;
+
+  Future<void> _undo() async {
+    setState(() => _busy = true);
+    final error = await context.read<ValidationController>().undo(widget.fact);
+    if (mounted) setState(() => _busy = false);
+    widget.onError(error);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final f = widget.fact;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: _card,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(f.text, style: da(size: 15)),
+          if (f.source != null) ...[
+            const SizedBox(height: 6),
+            Text('Tu avais dit : « ${f.source} »', style: da(size: 12, color: Palette.lune, style: FontStyle.italic)),
+          ],
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(onPressed: _busy ? null : _undo, child: const Text('Annuler')),
           ),
         ],
       ),

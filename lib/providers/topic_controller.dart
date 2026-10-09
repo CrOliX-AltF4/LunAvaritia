@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/topic.dart';
 import '../services/backend_client.dart';
+import '../services/change_stream.dart';
 import '../services/notification_tray.dart';
 
 /// How long LunAcedia keeps an action waiting for the user — past that it is dropped, never executed.
@@ -17,12 +18,50 @@ enum DecisionState { waiting, deciding, confirmed, cancelled, expired, failed, n
 /// One open topic: its messages (paged from the server), a turn at a time, and the decisions on the actions its
 /// answers wait on (an action is settled where it appears).
 class TopicController extends ChangeNotifier {
-  TopicController(this._api, this.topicId, {DateTime Function() now = DateTime.now, TurnResult? opened})
+  TopicController(this._api, this.topicId,
+      {DateTime Function() now = DateTime.now, TurnResult? opened, Stream<Change>? changes})
       : _now = now {
     if (opened != null) {
       topic = opened.topic;
       messages.addAll([opened.userMessage, opened.message]);
     }
+    _changes = changes?.listen(_onChange);
+  }
+
+  StreamSubscription<Change>? _changes;
+  Timer? _reload;
+
+  /// This topic changed elsewhere, or an action was decided: read again — never in the middle of a turn.
+  void _onChange(Change change) {
+    final mine = (change.scope == 'topics' && change.key == topicId) || change.scope == 'actions';
+    if (!mine) return;
+    _reload ??= Timer(const Duration(milliseconds: 300), () {
+      _reload = null;
+      if (!sending && !loading) unawaited(_refresh());
+    });
+  }
+
+  /// Read again in place: what is shown stays until the new page is there.
+  Future<void> _refresh() async {
+    try {
+      final page = await _api.topics.page(topicId);
+      if (sending) return;
+      topic = page.topic;
+      messages
+        ..clear()
+        ..addAll(page.messages);
+      hasMore = page.hasMore;
+      notifyListeners();
+    } catch (_) {
+      // out of reach: keep what is shown
+    }
+  }
+
+  @override
+  void dispose() {
+    unawaited(_changes?.cancel());
+    _reload?.cancel();
+    super.dispose();
   }
 
   final BackendClient _api;

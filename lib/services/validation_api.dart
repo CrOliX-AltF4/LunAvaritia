@@ -41,8 +41,15 @@ class PendingWrite {
 
 /// Something the hub's memory would keep — a fact, or an opinion — waiting for Master (write gate, D9).
 class MemoryProposal {
-  MemoryProposal(
-      {required this.id, required this.text, required this.editableText, required this.origin, required this.ts});
+  MemoryProposal({
+    required this.id,
+    required this.text,
+    required this.editableText,
+    required this.origin,
+    required this.ts,
+    this.conflictText,
+    this.duplicateText,
+  });
 
   final String id;
 
@@ -54,6 +61,12 @@ class MemoryProposal {
   final String origin;
   final DateTime ts;
 
+  /// It contradicts this published fact: the question is « which one is right? ».
+  final String? conflictText;
+
+  /// It nearly repeats this published fact: the question is « the same thing? ».
+  final String? duplicateText;
+
   factory MemoryProposal.fromJson(Map<String, dynamic> json) {
     final payload = json['payload'] is Map<String, dynamic> ? json['payload'] as Map<String, dynamic> : const {};
     final opinion = payload['kind'] == 'upsert_opinion';
@@ -64,14 +77,38 @@ class MemoryProposal {
       editableText: editable,
       origin: json['origin'] as String? ?? '',
       ts: DateTime.fromMillisecondsSinceEpoch(json['ts'] as int? ?? 0),
+      conflictText: json['conflictText'] as String?,
+      duplicateText: json['duplicateText'] as String?,
     );
   }
+}
+
+/// What the hub's memory wrote without asking — what Master said about himself — shown so it can be taken back.
+class UnaskedFact {
+  UnaskedFact({required this.speakerId, required this.id, required this.text, required this.at, this.source});
+
+  final String speakerId;
+  final String id;
+  final String text;
+  final DateTime at;
+
+  /// What Master had said, as it was captured.
+  final String? source;
+
+  factory UnaskedFact.fromJson(Map<String, dynamic> json) => UnaskedFact(
+        speakerId: json['speakerId'] as String? ?? '',
+        id: json['id'] as String? ?? '',
+        text: json['text'] as String? ?? '',
+        at: DateTime.fromMillisecondsSinceEpoch(json['timestamp'] as int? ?? 0),
+        source: json['source'] as String?,
+      );
 }
 
 /// « À valider »: LunAcedia's pending writes in both modes — on LunAcedia directly, or relayed by
 /// the hub — and, wired only, the hub's memory proposals (standalone has no long memory, D8).
 class ValidationApi {
-  ValidationApi(this._http, {required this.actionsPath, required this.pendingPath, this.proposalsPath});
+  ValidationApi(this._http,
+      {required this.actionsPath, required this.pendingPath, this.proposalsPath, this.unaskedPath});
 
   ValidationApi.lunacedia(HttpTransport http)
       : this(http, actionsPath: '/api/actions', pendingPath: '/api/actions/pending');
@@ -82,12 +119,14 @@ class ValidationApi {
           actionsPath: '/api/mobile/actions',
           pendingPath: '/api/mobile/actions/pending',
           proposalsPath: '/api/mobile/proposals',
+          unaskedPath: '/api/mobile/unasked',
         );
 
   final HttpTransport _http;
   final String actionsPath;
   final String pendingPath;
   final String? proposalsPath;
+  final String? unaskedPath;
 
   bool get hasMemory => proposalsPath != null;
 
@@ -126,5 +165,21 @@ class ValidationApi {
 
   Future<void> reject(String id) async {
     await _http.post('$proposalsPath/${Uri.encodeComponent(id)}/reject');
+  }
+
+  /// Newest first. Empty standalone (no long memory).
+  Future<List<UnaskedFact>> unasked() async {
+    final path = unaskedPath;
+    if (path == null) return const [];
+    final list = asObject(await _http.get(path))['facts'] as List<dynamic>? ?? const [];
+    return [
+      for (final f in list)
+        if (f is Map<String, dynamic>) UnaskedFact.fromJson(f),
+    ];
+  }
+
+  /// « Annuler »: the fact leaves the memory and is never written again unasked.
+  Future<void> undo(UnaskedFact f) async {
+    await _http.post('$unaskedPath/${Uri.encodeComponent(f.speakerId)}/${Uri.encodeComponent(f.id)}/undo');
   }
 }

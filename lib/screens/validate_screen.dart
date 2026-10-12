@@ -133,14 +133,25 @@ class _ProposalCardState extends State<_ProposalCard> {
   Widget build(BuildContext context) {
     final p = widget.proposal;
     final edit = _edit;
-    // A question (contradiction, near repeat) has its own two answers; nothing to reword there.
+    // A question (contradiction, near repeat, new card) has its own two answers; nothing to reword there.
     final answers = edit != null
         ? null
         : p.conflictText != null
             ? _answers(p, keep: 'Le nouveau est juste', drop: 'L’ancien est juste')
             : p.duplicateText != null
                 ? _answers(p, keep: 'Différent, retenir', drop: 'Même chose')
-                : null;
+                : p.newCard != null
+                    ? _answers(p, keep: 'Créer la fiche', drop: 'Écarter')
+                    : null;
+    final question = p.conflictText != null
+        ? 'Contredit : « ${p.conflictText} » — le retenir remplace l’ancien.'
+        : p.duplicateText != null
+            ? 'Ressemble à : « ${p.duplicateText} » — est-ce la même chose ?'
+            : p.candidates.isNotEmpty
+                ? 'Plusieurs fiches s’appellent « ${p.subject ?? ''} » — laquelle ?'
+                : p.newCard != null
+                    ? 'Aucune fiche « ${p.newCard} » : la retenir crée la fiche.'
+                    : null;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -148,21 +159,35 @@ class _ProposalCardState extends State<_ProposalCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (edit == null && p.subject != null) ...[
+            Text('À propos de ${p.subject}', style: da(size: 12, color: Palette.lune)),
+            const SizedBox(height: 4),
+          ],
           if (edit == null)
             Text('« ${p.text} »', style: da(family: serif, size: 18, style: FontStyle.italic, height: 1.4))
           else
             TextField(
                 controller: edit, maxLines: null, decoration: const InputDecoration(labelText: 'Texte à retenir')),
-          if (edit == null && (p.conflictText ?? p.duplicateText) != null) ...[
+          if (edit == null && question != null) ...[
             const SizedBox(height: 6),
-            Text(
-              p.conflictText != null
-                  ? 'Contredit : « ${p.conflictText} » — le retenir remplace l’ancien.'
-                  : 'Ressemble à : « ${p.duplicateText} » — est-ce la même chose ?',
-              style: da(size: 12.5, color: Palette.lune, height: 1.4),
-            ),
+            Text(question, style: da(size: 12.5, color: Palette.lune, height: 1.4)),
           ],
           const SizedBox(height: 10),
+          // « Which one? »: one answer per card, by name — only Master knows which one a shared name means.
+          if (edit == null && p.candidates.isNotEmpty)
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final c in p.candidates)
+                  OutlinedButton(
+                    onPressed: _busy ? null : () => _act((v) => v.approve(p, entityId: c.id)),
+                    child: Text(c.name),
+                  ),
+                TextButton(onPressed: _busy ? null : () => _act((v) => v.reject(p)), child: const Text('Écarter')),
+              ],
+            )
+          else
           Row(
             children: answers ?? (edit == null
                 ? [

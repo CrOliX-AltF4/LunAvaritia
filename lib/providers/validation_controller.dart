@@ -65,9 +65,9 @@ class ValidationController extends ChangeNotifier {
         writes = writes.where((x) => x.id != w.id).toList();
       });
 
-  /// Kept — in Master's own words when [text] is given (« Modifier »).
-  Future<String?> approve(MemoryProposal p, {String? text}) => _run(() async {
-        await _api.validation.approve(p.id, text: text);
+  /// Kept — in Master's own words when [text] is given (« Modifier »); [entityId] is the card picked for « which one? ».
+  Future<String?> approve(MemoryProposal p, {String? text, String? entityId}) => _run(() async {
+        await _api.validation.approve(p.id, text: text, entityId: entityId);
         proposals = proposals.where((x) => x.id != p.id).toList();
       });
 

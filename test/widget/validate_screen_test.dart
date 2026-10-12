@@ -119,6 +119,34 @@ void main() {
     expect(backend.validation.rejected, ['p1']);
   });
 
+  testWidgets('a fact about a name no card answers to says so — « Créer la fiche » keeps it', (tester) async {
+    backend.validation.proposalList = [
+      MemoryProposal(
+          id: 'p1', text: 'Runs marathons', editableText: 'Runs marathons', origin: 'chat', ts: DateTime.now(),
+          subject: 'Thomas', newCard: 'Thomas'),
+    ];
+    await pump(tester);
+    expect(find.text('À propos de Thomas'), findsOneWidget);
+    expect(find.textContaining('Aucune fiche « Thomas »'), findsOneWidget);
+    await tester.tap(find.text('Créer la fiche'));
+    await tester.pumpAndSettle();
+    expect(backend.validation.approved, [('p1', null)]);
+  });
+
+  testWidgets('« which one? » offers each card by name; tapping one answers with it', (tester) async {
+    backend.validation.proposalList = [
+      MemoryProposal(
+          id: 'p1', text: 'Is a pilot', editableText: 'Is a pilot', origin: 'chat', ts: DateTime.now(),
+          subject: 'Léa', candidates: const [CardChoice('ent_a', 'Léa Martin'), CardChoice('ent_b', 'Léa Dupont')]),
+    ];
+    await pump(tester);
+    expect(find.textContaining('laquelle ?'), findsOneWidget);
+    expect(find.text('Retenir'), findsNothing);
+    await tester.tap(find.text('Léa Dupont'));
+    await tester.pumpAndSettle();
+    expect(backend.validation.approvedCards, [('p1', 'ent_b')]);
+  });
+
   testWidgets('shows what was written unasked, with what was said, and « Annuler » takes it back', (tester) async {
     backend.validation.unaskedList = [
       UnaskedFact(speakerId: 'master', id: 'f1', text: 'Aime le thé vert', at: DateTime.now(), source: 'J’adore le thé vert'),

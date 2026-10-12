@@ -39,6 +39,13 @@ class PendingWrite {
   }
 }
 
+/// A card of the hub's memory a shared name may mean — offered by name when the question is « which one? ».
+class CardChoice {
+  const CardChoice(this.id, this.name);
+  final String id;
+  final String name;
+}
+
 /// Something the hub's memory would keep — a fact, or an opinion — waiting for Master (write gate, D9).
 class MemoryProposal {
   MemoryProposal({
@@ -49,6 +56,9 @@ class MemoryProposal {
     required this.ts,
     this.conflictText,
     this.duplicateText,
+    this.subject,
+    this.newCard,
+    this.candidates = const [],
   });
 
   final String id;
@@ -67,10 +77,30 @@ class MemoryProposal {
   /// It nearly repeats this published fact: the question is « the same thing? ».
   final String? duplicateText;
 
+  /// Who the fact is about, by name, when it is not Master — a card's name, or the name as it was said.
+  final String? subject;
+
+  /// No card answers to this name: keeping the fact makes the card.
+  final String? newCard;
+
+  /// Several cards answer to the name: keeping the fact means picking one of them.
+  final List<CardChoice> candidates;
+
   factory MemoryProposal.fromJson(Map<String, dynamic> json) {
     final payload = json['payload'] is Map<String, dynamic> ? json['payload'] as Map<String, dynamic> : const {};
     final opinion = payload['kind'] == 'upsert_opinion';
     final editable = (opinion ? payload['position'] : payload['text']) as String? ?? '';
+    final named = json['candidateCards'] is List ? json['candidateCards'] as List : const [];
+    final ids = json['candidates'] is List ? json['candidates'] as List : const [];
+    final candidates = named.isNotEmpty
+        ? [
+            for (final c in named)
+              if (c is Map<String, dynamic> && c['id'] is String) CardChoice(c['id'] as String, c['name'] as String? ?? c['id'] as String),
+          ]
+        : [for (final id in ids) if (id is String) CardChoice(id, id)];
+    final speaker = payload['speakerId'] as String?;
+    final aboutSomeoneElse = !opinion && speaker != null && speaker != 'master';
+    final subject = json['subjectName'] as String? ?? (aboutSomeoneElse && !speaker.startsWith('ent_') ? speaker : null);
     return MemoryProposal(
       id: json['id'] as String? ?? '',
       text: opinion ? '${payload['subject'] ?? ''} — $editable' : editable,
@@ -79,6 +109,9 @@ class MemoryProposal {
       ts: DateTime.fromMillisecondsSinceEpoch(json['ts'] as int? ?? 0),
       conflictText: json['conflictText'] as String?,
       duplicateText: json['duplicateText'] as String?,
+      subject: subject == 'master' ? null : subject,
+      newCard: json['newCard'] as String?,
+      candidates: candidates,
     );
   }
 }
@@ -157,10 +190,13 @@ class ValidationApi {
     ]..sort((a, b) => a.ts.compareTo(b.ts));
   }
 
-  /// Kept — in Master's own words when [text] is given (« Modifier »).
-  Future<void> approve(String id, {String? text}) async {
-    final body = text != null && text.trim().isNotEmpty ? {'text': text} : null;
-    await _http.post('$proposalsPath/${Uri.encodeComponent(id)}/approve', body: body);
+  /// Kept — in Master's own words when [text] is given (« Modifier »); [entityId] answers « which one? ».
+  Future<void> approve(String id, {String? text, String? entityId}) async {
+    final body = <String, String>{
+      if (text != null && text.trim().isNotEmpty) 'text': text,
+      if (entityId != null) 'entityId': entityId,
+    };
+    await _http.post('$proposalsPath/${Uri.encodeComponent(id)}/approve', body: body.isEmpty ? null : body);
   }
 
   Future<void> reject(String id) async {

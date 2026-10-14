@@ -188,6 +188,9 @@ class FakeValidationApi extends ValidationApi {
   List<MemoryProposal> proposalList = [];
   final List<(String, bool)> decisions = [];
   final List<(String, String?)> approved = [];
+
+  /// The card picked for each « which one? » answered.
+  final List<(String, String)> approvedCards = [];
   final List<String> rejected = [];
   List<UnaskedFact> unaskedList = [];
   final List<String> undone = [];
@@ -208,8 +211,9 @@ class FakeValidationApi extends ValidationApi {
   Future<List<MemoryProposal>> proposals() async => hasMemory ? List.of(proposalList) : const [];
 
   @override
-  Future<void> approve(String id, {String? text}) async {
+  Future<void> approve(String id, {String? text, String? entityId}) async {
     approved.add((id, text));
+    if (entityId != null) approvedCards.add((id, entityId));
     if (approveError != null) throw approveError!;
     proposalList.removeWhere((p) => p.id == id);
   }

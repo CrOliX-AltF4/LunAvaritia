@@ -129,6 +129,34 @@ void main() {
     expect(list.map((p) => (p.conflictText, p.duplicateText)), [('Habite à Lyon', null), (null, 'Joue à osu!')]);
   });
 
+  test('wired: a fact about someone names them, and says when it asks « a new card? » or « which one? »', () async {
+    final list = await withServer(
+      (_) => {
+        'proposals': [
+          {'id': 'p1', 'origin': 'discord', 'ts': 1, 'subjectName': 'Léa', 'payload': {'kind': 'add_fact', 'speakerId': 'ent_1', 'text': 'Owes ten euros'}},
+          {'id': 'p2', 'origin': 'chat', 'ts': 2, 'newCard': 'Thomas', 'payload': {'kind': 'add_fact', 'speakerId': 'Thomas', 'text': 'Runs marathons', 'saidBy': 'master'}},
+          {
+            'id': 'p3', 'origin': 'chat', 'ts': 3, 'candidates': ['ent_a', 'ent_b'],
+            'candidateCards': [{'id': 'ent_a', 'name': 'Léa Martin'}, {'id': 'ent_b', 'name': 'Léa Dupont'}],
+            'payload': {'kind': 'add_fact', 'speakerId': 'Léa', 'text': 'Is a pilot', 'saidBy': 'master'},
+          },
+          {'id': 'p4', 'origin': 'chat', 'ts': 4, 'payload': {'kind': 'add_fact', 'speakerId': 'master', 'text': 'Likes tea'}},
+        ]
+      },
+      () => ValidationApi.hub(transport).proposals(),
+    );
+    expect(list.map((p) => p.subject), ['Léa', 'Thomas', 'Léa', null]);
+    expect(list[1].newCard, 'Thomas');
+    expect(list[2].candidates.map((c) => (c.id, c.name)), [('ent_a', 'Léa Martin'), ('ent_b', 'Léa Dupont')]);
+    expect(list[3].candidates, isEmpty);
+  });
+
+  test('wired: « which one? » is answered with the card picked', () async {
+    await withServer((_) => {'status': 'applied'}, () => ValidationApi.hub(transport).approve('p3', entityId: 'ent_b'));
+    expect(sent.last.url.path, '/api/mobile/proposals/p3/approve');
+    expect(sent.last.body, '{"entityId":"ent_b"}');
+  });
+
   test('wired: reads what was written unasked, and « Annuler » posts to its own path', () async {
     final facts = await withServer(
       (_) => {

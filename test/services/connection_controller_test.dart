@@ -6,7 +6,7 @@ import 'package:lunavaritia/services/connection_controller.dart';
 import '../support/fakes.dart';
 
 // The notification token lives with one server, the one the app talks to: a move registers it with the new server
-// first, then lets the old one go — and a server out of reach is retried, never forgotten (ADR-034 D2, D3).
+// first, then lets the old one go — and a server out of reach is retried, never forgotten.
 
 final standalone = ApiConfig.fromForm(acediaUrl: 'http://acedia:4001', acediaToken: 'acd_dev_phone', hubUrl: '', hubToken: '');
 final wired = ApiConfig.fromForm(acediaUrl: 'http://acedia:4001', acediaToken: 'acd_dev_phone', hubUrl: 'http://hub:3333', hubToken: 'hub_dev_phone');

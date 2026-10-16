@@ -60,4 +60,9 @@ class ApiService extends BackendClient {
   Future<void> registerPushToken(String token) async {
     await _http.post('/api/mobile/push-token', body: {'token': token});
   }
+
+  @override
+  Future<void> unregisterPushToken() async {
+    await _http.delete('/api/mobile/push-token');
+  }
 }

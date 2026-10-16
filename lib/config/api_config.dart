@@ -36,6 +36,11 @@ class ApiConfig {
           ? ApiConfig._(acediaUrl: '', acediaToken: '', hubUrl: baseUrl, hubToken: token)
           : ApiConfig._(acediaUrl: baseUrl, acediaToken: token, hubUrl: '', hubToken: '');
 
+  /// One server alone — the one a phone left, kept until it lets the notification token go (ConnectionController).
+  factory ApiConfig.server({required String baseUrl, required String token, required bool wired}) => wired
+      ? ApiConfig._(acediaUrl: '', acediaToken: '', hubUrl: baseUrl, hubToken: token)
+      : ApiConfig._(acediaUrl: baseUrl, acediaToken: token, hubUrl: '', hubToken: '');
+
   /// LunAcedia's own address — the standalone product.
   final String acediaUrl;
   final String acediaToken;
@@ -96,6 +101,14 @@ class ApiConfig {
     await _secureStorage.write(key: _keyHubToken, value: hubToken.trim());
   }
 
+  /// Saves a whole config — the connection's own way (ConnectionController.apply).
+  static Future<void> persist(ApiConfig config) => save(
+        acediaUrl: config.acediaUrl,
+        acediaToken: config.acediaToken,
+        hubUrl: config.hubUrl,
+        hubToken: config.hubToken,
+      );
+
   /// A config built from the settings form, before saving — for "Tester la connexion".
   static ApiConfig fromForm({
     required String acediaUrl,
@@ -104,9 +117,6 @@ class ApiConfig {
     required String hubToken,
   }) =>
       ApiConfig._(acediaUrl: acediaUrl, acediaToken: acediaToken, hubUrl: hubUrl, hubToken: hubToken);
-
-  /// The same phone talking to LunAcedia directly — what it was before it was wired to a hub.
-  ApiConfig get standalone => ApiConfig._(acediaUrl: acediaUrl, acediaToken: acediaToken, hubUrl: '', hubToken: '');
 
   Map<String, String> get headers => {
         'Content-Type': 'application/json',

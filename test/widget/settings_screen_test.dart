@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lunavaritia/config/api_config.dart';
 import 'package:lunavaritia/models/assistant_identity.dart';
 import 'package:lunavaritia/screens/settings_screen.dart';
 import 'package:lunavaritia/services/backend_client.dart';
+import 'package:lunavaritia/services/connection_controller.dart';
 import 'package:lunavaritia/services/update_checker.dart';
+
+import '../support/fakes.dart';
 
 const _secureStorageChannel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
 
@@ -30,8 +34,17 @@ void main() {
     IdentityProbe probe, {
     Future<UpdateStatus> Function()? checkUpdate,
   }) async {
-    await tester.pumpWidget(MaterialApp(
-      home: SettingsScreen(probe: probe, checkUpdate: checkUpdate ?? () async => const UpToDate('1.3.1')),
+    final connection = ConnectionController(
+      config: await ApiConfig.load(),
+      pending: MemoryPendingRelease(),
+      pushToken: () async => null,
+      clientFor: FakePushServers().clientFor,
+    );
+    await tester.pumpWidget(ChangeNotifierProvider.value(
+      value: connection,
+      child: MaterialApp(
+        home: SettingsScreen(probe: probe, checkUpdate: checkUpdate ?? () async => const UpToDate('1.3.1')),
+      ),
     ));
     await tester.pumpAndSettle();
   }

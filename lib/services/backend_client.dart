@@ -28,6 +28,8 @@ abstract class BackendClient {
   /// What is still unread: the urgent items listed by LunAcedia, then the model's summary.
   Future<Digest> getDigest();
   Future<void> registerPushToken(String token);
+  /// This phone stops this server's notifications — it moved to the other one.
+  Future<void> unregisterPushToken();
 }
 
 /// The client for the saved configuration — the one place that picks a backend.

@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:lunavaritia/config/api_config.dart';
 import 'package:lunavaritia/models/assistant_identity.dart';
 import 'package:lunavaritia/screens/settings_screen.dart';
 import 'package:lunavaritia/services/backend_error.dart';
+import 'package:lunavaritia/services/connection_controller.dart';
 import 'package:lunavaritia/services/pairing.dart';
 import 'package:lunavaritia/services/update_checker.dart';
+
+import '../support/fakes.dart';
 
 // Pairing from the settings: no secret is ever typed; an old one is replaced by the device token.
 
@@ -17,9 +21,11 @@ const _secureStorageChannel = MethodChannel('plugins.it_nomads.com/flutter_secur
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late Map<String, String> secure;
+  late FakePushServers servers;
 
   setUp(() {
     secure = {};
+    servers = FakePushServers();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(_secureStorageChannel, (call) async {
       final args = (call.arguments as Map?)?.cast<String, dynamic>() ?? {};
       final key = args['key'] as String?;
@@ -41,14 +47,23 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(_secureStorageChannel, null);
   });
 
-  Future<void> pump(WidgetTester tester, PairDevice pair, {RegisterPush? registerPush, LeaveStandalonePush? leaveStandalonePush}) async {
-    await tester.pumpWidget(MaterialApp(
-      home: SettingsScreen(
-        probe: (_) async => AssistantIdentity.unknown,
-        checkUpdate: () async => const UpToDate('1.4.0'),
-        pair: pair,
-        registerPush: registerPush ?? (_) async {},
-        leaveStandalonePush: leaveStandalonePush ?? (_) async {},
+  /// The settings over the real connection, its servers recorded (ConnectionController).
+  Future<void> pump(WidgetTester tester, PairDevice pair) async {
+    final config = await ApiConfig.load();
+    final connection = ConnectionController(
+      config: config,
+      pending: MemoryPendingRelease(),
+      pushToken: () async => 'fcm-1',
+      clientFor: servers.clientFor,
+    );
+    await tester.pumpWidget(ChangeNotifierProvider.value(
+      value: connection,
+      child: MaterialApp(
+        home: SettingsScreen(
+          probe: (_) async => AssistantIdentity.unknown,
+          checkUpdate: () async => const UpToDate('1.4.0'),
+          pair: pair,
+        ),
       ),
     ));
     await tester.pumpAndSettle();
@@ -98,12 +113,7 @@ void main() {
   // Live check V3 (2026-10-05): the push token was only sent at startup, refused before pairing, never sent again.
   testWidgets('registers for notifications with the new device token right after pairing', (tester) async {
     SharedPreferences.setMockInitialValues({'acedia_url': 'http://acedia:4001'});
-    final registered = <ApiConfig>[];
-    await pump(
-      tester,
-      ({required target, required url, required code, required name}) async => 'acd_dev_new',
-      registerPush: (config) async => registered.add(config),
-    );
+    await pump(tester, ({required target, required url, required code, required name}) async => 'acd_dev_new');
 
     await tester.tap(find.text('Appairer'));
     await tester.pumpAndSettle();
@@ -111,9 +121,9 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Appairer'));
     await tester.pumpAndSettle();
 
-    expect(registered, hasLength(1));
-    expect(registered.single.baseUrl, 'http://acedia:4001');
-    expect(registered.single.token, 'acd_dev_new');
+    expect(servers.calls, ['register http://acedia:4001 fcm-1']);
+    // Applied at once: no restart asked.
+    expect(find.textContaining('redémarrez'), findsNothing);
   });
 
   // Wired, the hub sends the notifications — LunAcedia must stop sending to this phone, or they come twice.
@@ -126,32 +136,26 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets("takes this phone off LunAcedia's notifications, with its LunAcedia token", (tester) async {
+    testWidgets("registers with the hub, then takes this phone off LunAcedia's notifications", (tester) async {
       SharedPreferences.setMockInitialValues({'acedia_url': 'http://acedia:4001'});
       secure['acedia_token'] = 'acd_dev_phone';
-      final left = <ApiConfig>[];
-      await pump(tester, ({required target, required url, required code, required name}) async => 'x',
-          leaveStandalonePush: (config) async => left.add(config));
+      await pump(tester, ({required target, required url, required code, required name}) async => 'x');
 
       await wireToHub(tester);
 
-      expect(left, hasLength(1));
-      expect(left.single.baseUrl, 'http://acedia:4001');
-      expect(left.single.token, 'acd_dev_phone');
-      expect(left.single.wired, isFalse);
+      expect(servers.calls, ['register http://hub:3333 fcm-1', 'release http://acedia:4001 acd_dev_phone']);
+      expect(find.text('Relié au hub — les notifications viennent du hub.'), findsOneWidget);
     });
 
     testWidgets('does nothing when the phone was already wired', (tester) async {
       SharedPreferences.setMockInitialValues({'acedia_url': 'http://acedia:4001', 'hub_url': 'http://hub:3333'});
       secure['acedia_token'] = 'acd_dev_phone';
-      final left = <ApiConfig>[];
-      await pump(tester, ({required target, required url, required code, required name}) async => 'x',
-          leaveStandalonePush: (config) async => left.add(config));
+      await pump(tester, ({required target, required url, required code, required name}) async => 'x');
 
       await tester.tap(find.text('Sauvegarder'));
       await tester.pumpAndSettle();
 
-      expect(left, isEmpty);
+      expect(servers.calls.where((c) => c.startsWith('release')), isEmpty);
     });
   });
 

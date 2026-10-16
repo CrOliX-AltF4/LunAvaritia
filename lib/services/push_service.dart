@@ -3,21 +3,9 @@ import 'dart:convert';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import '../config/api_config.dart';
-import 'backend_client.dart';
+import 'connection_controller.dart';
 import 'deep_link_router.dart';
-import 'lunacedia_client.dart';
 import 'notification_tray.dart';
-
-/// Sends this phone's notification token to the server [config] talks to. Called right after a pairing (live
-/// check V3): at startup an unpaired phone is refused, and nothing used to send the token again until a restart.
-/// Non-fatal — Firebase may not be configured, the server may be out of reach.
-Future<void> registerPushTokenWith(ApiConfig config) async {
-  try {
-    final token = await FirebaseMessaging.instance.getToken();
-    if (token != null) await buildBackendClient(config).registerPushToken(token);
-  } catch (_) {}
-}
 
 // Top-level handler required by Firebase for background messages. The ones to show are shown by FCM itself on
 // Android; the silent ones say which notifications are settled elsewhere — taken down here, the app staying closed.
@@ -47,19 +35,11 @@ Future<void> dismissSettled(NotificationTray tray, List<String> tags) async {
   }
 }
 
-/// Takes this phone off LunAcedia's notifications as it moves to a hub: wired, the hub sends them,
-/// LunAcedia's included — otherwise every notification would come twice. The last direct call to LunAcedia; best effort.
-Future<void> leaveStandalonePushAt(ApiConfig lunacedia) async {
-  if (lunacedia.baseUrl.isEmpty || lunacedia.token.isEmpty) return;
-  try {
-    await LunAcediaClient(lunacedia).unregisterPushToken();
-  } catch (_) {}
-}
-
 class PushService {
-  PushService(this._api);
+  PushService(this._connection);
 
-  final BackendClient _api;
+  /// Where the token goes — the server the app talks to now, whatever it was at launch.
+  final ConnectionController _connection;
 
   final _localNotifications = FlutterLocalNotificationsPlugin();
 
@@ -101,12 +81,8 @@ class PushService {
       sound: true,
     );
 
-    // Refresh token handler
-    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
-      try {
-        await _api.registerPushToken(newToken);
-      } catch (_) {}
-    });
+    // A renewed token goes to the server the app talks to now.
+    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) => unawaited(_connection.registerToken(newToken)));
 
     // Foreground message display
     FirebaseMessaging.onMessage.listen((message) {
@@ -154,13 +130,8 @@ class PushService {
     if (initialMessage != null) _routeToPayload(initialMessage.data);
 
     // Registered with the server LAST: it is the only step that needs the network, and a server out of reach
-    // must never delay the listeners above (it used to run first, inside a startup the UI waited on).
-    try {
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token != null) await _api.registerPushToken(token);
-    } catch (_) {
-      // Non-fatal — the app works without push; the token is registered again on the next start/refresh.
-    }
+    // must never delay the listeners above. A server the phone left lets the token go once this one has it.
+    await _connection.settle();
   }
 
   /// Single choke point for every notification-tap entry point (foreground-shown local

@@ -5,6 +5,7 @@ import 'package:lunavaritia/models/box_item.dart';
 import 'package:lunavaritia/models/digest.dart';
 import 'package:lunavaritia/models/topic.dart';
 import 'package:lunavaritia/services/backend_client.dart';
+import 'package:lunavaritia/services/connection_controller.dart';
 import 'package:lunavaritia/services/http_transport.dart';
 import 'package:lunavaritia/services/inbox_api.dart';
 import 'package:lunavaritia/services/notification_tray.dart';
@@ -276,6 +277,9 @@ class FakeBackend extends BackendClient {
 
   @override
   Future<void> registerPushToken(String token) async {}
+
+  @override
+  Future<void> unregisterPushToken() async {}
 }
 
 /// The notification shade: what is shown (by tag), what the app took down.
@@ -305,4 +309,50 @@ class FakeUpdateChecker extends UpdateChecker {
     calls++;
     return status;
   }
+}
+
+/// The servers' notification-token routes, recorded in order — `register <url> <fcm token>`, `release <url> <device
+/// token>` — with servers that can be out of reach.
+class FakePushServers {
+  final calls = <String>[];
+  final unreachable = <String>{};
+
+  BackendClient clientFor(ApiConfig config) => _PushRecordingBackend(this, config);
+}
+
+class _PushRecordingBackend extends FakeBackend {
+  _PushRecordingBackend(this._servers, this._config);
+
+  final FakePushServers _servers;
+  final ApiConfig _config;
+
+  void _reach() {
+    if (_servers.unreachable.contains(_config.baseUrl)) throw BackendError(BackendErrorKind.unreachable);
+  }
+
+  @override
+  Future<void> registerPushToken(String token) async {
+    _reach();
+    _servers.calls.add('register ${_config.baseUrl} $token');
+  }
+
+  @override
+  Future<void> unregisterPushToken() async {
+    _reach();
+    _servers.calls.add('release ${_config.baseUrl} ${_config.token}');
+  }
+}
+
+/// A release owed by a server the phone left, kept in memory.
+class MemoryPendingRelease implements PendingReleaseStore {
+  ApiConfig? held;
+
+  @override
+  Future<ApiConfig?> read() async => held;
+
+  @override
+  Future<void> write(ApiConfig server) async => held = server;
+
+  @override
+  Future<void> clear() async => held = null;
 }

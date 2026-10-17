@@ -8,6 +8,8 @@ import 'package:lunavaritia/services/backend_client.dart';
 import 'package:lunavaritia/services/connection_controller.dart';
 import 'package:lunavaritia/services/http_transport.dart';
 import 'package:lunavaritia/services/inbox_api.dart';
+import 'package:lunavaritia/services/planning_api.dart';
+import 'package:lunavaritia/models/planning.dart';
 import 'package:lunavaritia/services/notification_tray.dart';
 import 'package:lunavaritia/services/validation_api.dart';
 import 'package:lunavaritia/services/topic_api.dart';
@@ -177,6 +179,45 @@ class FakeInboxApi extends InboxApi {
     restored.add(messageId);
     trashed.removeWhere((t) => t.id == messageId);
   }
+
+  /// A conflict's gestures: « solve-<n> » or « leave »; either takes it out of the box.
+  final List<(String, String)> settled = [];
+
+  @override
+  Future<void> solve(String key, int n) async {
+    settled.add((key, 'solve-$n'));
+    if (gestureError != null) throw gestureError!;
+    items.removeWhere((i) => i.key == key);
+  }
+
+  @override
+  Future<void> leave(String key) async {
+    settled.add((key, 'leave'));
+    if (gestureError != null) throw gestureError!;
+    items.removeWhere((i) => i.key == key);
+  }
+}
+
+/// The planning in memory: « Fait » recorded; [doneError] refuses it.
+class FakePlanningApi extends PlanningApi {
+  FakePlanningApi() : super(HttpTransport(ApiConfig.forTest(baseUrl: 'http://fake')), path: '/p');
+
+  PlanningSnapshot snap = PlanningSnapshot(events: [], tasks: [], conflicts: [], complete: true);
+  Object? snapshotError;
+  Object? doneError;
+  final List<String> completed = [];
+
+  @override
+  Future<PlanningSnapshot> snapshot() async {
+    if (snapshotError != null) throw snapshotError!;
+    return snap;
+  }
+
+  @override
+  Future<void> done(String taskId) async {
+    completed.add(taskId);
+    if (doneError != null) throw doneError!;
+  }
 }
 
 /// « À valider » in memory: decisions and proposal answers recorded; a decided item leaves its list.
@@ -249,6 +290,9 @@ class FakeBackend extends BackendClient {
 
   @override
   final FakeInboxApi inbox = FakeInboxApi();
+
+  @override
+  final FakePlanningApi planning = FakePlanningApi();
 
   @override
   final FakeValidationApi validation = FakeValidationApi();

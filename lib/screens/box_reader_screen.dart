@@ -17,9 +17,12 @@ import 'box_screen.dart';
 /// item: once the item has left the box — whatever did it (a gesture here or in the sheet of actions, « Traiter », the
 /// source itself) — the reader goes back to the list as it now is (2026-10-07).
 class BoxReaderScreen extends StatefulWidget {
-  const BoxReaderScreen({super.key, required this.itemKey});
+  const BoxReaderScreen({super.key, required this.itemKey, this.back = const BoxDestination()});
 
   final String itemKey;
+
+  /// Where « Retour » leads — the box, or the planning for a conflict opened there.
+  final Destination back;
 
   @override
   State<BoxReaderScreen> createState() => _BoxReaderScreenState();
@@ -61,7 +64,18 @@ class _BoxReaderScreenState extends State<BoxReaderScreen> {
     }
   }
 
-  void _back() => context.read<ShellController>().go(const BoxDestination());
+  void _back() => context.read<ShellController>().go(widget.back);
+
+  bool _settling = false;
+
+  /// A conflict's way out, or left as it is ([n] null). Once done, the conflict leaves the box and the reader follows.
+  Future<void> _settle(int? n) async {
+    setState(() => _settling = true);
+    final why = await context.read<BoxController>().settleConflict(_item!, n);
+    if (!mounted) return;
+    setState(() => _settling = false);
+    if (why != null) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pas fait : $why')));
+  }
 
   Future<void> _gesture(BoxGesture g) async {
     await runBoxGesture(context, _item!, g);
@@ -80,7 +94,7 @@ class _BoxReaderScreenState extends State<BoxReaderScreen> {
     }
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(tooltip: 'Retour à la boîte', icon: const Icon(Icons.arrow_back), onPressed: _back),
+        leading: IconButton(tooltip: 'Retour', icon: const Icon(Icons.arrow_back), onPressed: _back),
         titleSpacing: 0,
         title: Text(item == null ? 'Boîte' : sourceLabel(item).split(' · ').first,
             style: da(size: 13, color: Palette.lune)),
@@ -109,7 +123,7 @@ class _BoxReaderScreenState extends State<BoxReaderScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(child: _content(item)),
-                _actions(item),
+                if (item.conflict != null) _conflictActions(item, item.conflict!) else _actions(item),
               ],
             ),
     );
@@ -198,6 +212,55 @@ class _BoxReaderScreenState extends State<BoxReaderScreen> {
                       _ => 'Ouvrir',
                     }),
                   )),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// A conflict (lot AT5): its free slots, each a button that moves the event at Google Agenda at once; « Laisser tel
+  /// quel » takes it out of the box. « Ouvrir un sujet » talks it over first.
+  Widget _conflictActions(BoxItem item, ConflictWays ways) {
+    final shell = context.read<ShellController>();
+    String clock(DateTime t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        decoration: const BoxDecoration(border: Border(top: BorderSide(color: Palette.filet))),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(ways.moving.isEmpty ? 'Déplacer un des rendez-vous' : 'Déplacer « ${ways.moving} »',
+                style: da(family: serif, size: 18, weight: 600)),
+            const SizedBox(height: 4),
+            Text(
+              ways.slots.isEmpty
+                  ? 'Aucun créneau libre ce jour-là, de la même durée.'
+                  : 'Créneaux libres du même jour, même durée. Le choix déplace le rendez-vous dans Google Agenda tout de suite.',
+              style: da(size: 12.5, color: Palette.lune),
+            ),
+            const SizedBox(height: 8),
+            for (final (i, s) in ways.slots.indexed)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: FilledButton(
+                  onPressed: _settling ? null : () => _settle(i),
+                  child: Text('Déplacer à ${clock(s.start)} · ${clock(s.start)}–${clock(s.end)}'),
+                ),
+              ),
+            Row(
+              children: [
+                _side(OutlinedButton(
+                  onPressed: () => shell.go(HomeDestination(aboutKey: item.key, aboutTitle: item.title)),
+                  child: const Text('Ouvrir un sujet'),
+                )),
+                _side(OutlinedButton(
+                  onPressed: _settling ? null : () => _settle(null),
+                  child: const Text('Laisser tel quel'),
+                )),
               ],
             ),
           ],

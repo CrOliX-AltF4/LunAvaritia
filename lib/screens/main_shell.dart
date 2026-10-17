@@ -21,6 +21,7 @@ import 'box_reader_screen.dart';
 import 'box_screen.dart';
 import 'digest_sheet.dart';
 import 'home_screen.dart';
+import 'planning_screen.dart';
 import 'settings_screen.dart';
 import 'topic_screen.dart';
 import 'trash_screen.dart';
@@ -225,7 +226,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
             child: const TopicScreen(),
           ),
         BoxDestination() => const BoxScreen(),
-        BoxItemDestination(:final key) => BoxReaderScreen(key: ValueKey('box-item-$key'), itemKey: key),
+        BoxItemDestination(:final key, :final back) =>
+          BoxReaderScreen(key: ValueKey('box-item-$key'), itemKey: key, back: back),
+        PlanningDestination() => const PlanningScreen(),
         TrashDestination() => const TrashScreen(),
         ValidateDestination() => const ValidateScreen(),
         ArchivedDestination() => const ArchivedScreen(),
@@ -239,13 +242,15 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     final showPairingBanner = widget.pairingNeeded && destination is! SettingsDestination;
 
     return PopScope(
-      // Back leads home first — from an item or the trash, to the box; from home, it leaves the app.
+      // Back leads home first — from an item, where it came from; from the trash, to the box; from home, it leaves.
       canPop: destination is HomeDestination,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        shell.go(destination is BoxItemDestination || destination is TrashDestination
-            ? const BoxDestination()
-            : const HomeDestination());
+        shell.go(switch (destination) {
+          BoxItemDestination(:final back) => back,
+          TrashDestination() => const BoxDestination(),
+          _ => const HomeDestination(),
+        });
       },
       child: Scaffold(
         key: shell.scaffoldKey,

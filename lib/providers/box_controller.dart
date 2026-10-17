@@ -103,6 +103,24 @@ class BoxController extends ChangeNotifier {
     }
   }
 
+  /// A conflict's [n]-th way out, or left as it is ([n] null): either way it leaves the box. Null when done;
+  /// otherwise why it was not — the conflict then stays.
+  Future<String?> settleConflict(BoxItem item, int? n) async {
+    try {
+      if (n == null) {
+        await _api.inbox.leave(item.key);
+      } else {
+        await _api.inbox.solve(item.key, n);
+      }
+      _adopt(item.key, BoxChange.removed);
+      return null;
+    } on BackendError catch (e) {
+      return e.message;
+    } catch (e) {
+      return 'Erreur inattendue : $e';
+    }
+  }
+
   /// The full text; the item is read at the source from then on. Throws a [BackendError].
   Future<String> open(BoxItem item) async {
     final result = await _api.inbox.gesture(item.key, BoxGesture.open);

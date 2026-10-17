@@ -201,6 +201,57 @@ void main() {
   });
 
   group('BoxReaderScreen', () {
+    BoxItem conflict() => BoxItem.fromJson({
+          'dedupeKey': 'c1',
+          'type': 'planning.conflict',
+          'source': 'calendar',
+          'title': 'Conflit — Dentiste et Appel Léa',
+          'priority': 'urgent',
+          'ts': 0,
+          'read': false,
+          'meta': {
+            'movingTitle': 'Appel Léa',
+            'solutions': [
+              {'eventId': 'p/b', 'start': DateTime(2026, 10, 20, 11).toUtc().toIso8601String(), 'end': DateTime(2026, 10, 20, 12).toUtc().toIso8601String()},
+              {'eventId': 'p/b', 'start': DateTime(2026, 10, 20, 14).toUtc().toIso8601String(), 'end': DateTime(2026, 10, 20, 15).toUtc().toIso8601String()},
+            ],
+          },
+        });
+
+    testWidgets('a conflict offers its free slots; one chosen moves the event and leads back to where it was opened', (tester) async {
+      backend.inbox.items = [conflict()];
+      await box.load();
+      shell.go(const BoxItemDestination('c1', back: PlanningDestination()));
+      await pump(tester, const BoxReaderScreen(itemKey: 'c1', back: PlanningDestination()));
+      expect(find.text('Déplacer « Appel Léa »'), findsOneWidget);
+      expect(find.text('Traiter'), findsNothing);
+      await tester.tap(find.text('Déplacer à 14:00 · 14:00–15:00'));
+      await tester.pumpAndSettle();
+      expect(backend.inbox.settled, [('c1', 'solve-1')]);
+      expect(box.byKey('c1'), isNull);
+      expect(shell.current, isA<PlanningDestination>());
+    });
+
+    testWidgets('a conflict left as it is leaves the box; a refusal keeps it and says why', (tester) async {
+      backend.inbox.items = [conflict()];
+      await box.load();
+      await pump(tester, const BoxReaderScreen(itemKey: 'c1'));
+      backend.inbox.gestureError = BackendError(BackendErrorKind.unreachable);
+      await tester.tap(find.text('Laisser tel quel'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Pas fait'), findsOneWidget);
+      expect(box.byKey('c1'), isNotNull);
+      // The refusal's snackbar gone from over the buttons.
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+
+      backend.inbox.gestureError = null;
+      await tester.tap(find.text('Laisser tel quel'));
+      await tester.pumpAndSettle();
+      expect(backend.inbox.settled.last, ('c1', 'leave'));
+      expect(box.byKey('c1'), isNull);
+    });
+
     testWidgets('opens the item: its whole text, from whom, a third party wrote it', (tester) async {
       backend.inbox.items = [item('email-1', title: "Colonne d'eau", from: 'Syndic <syndic@ex.fr>')];
       backend.inbox.openBody = 'Bonjour, voici le texte entier.';

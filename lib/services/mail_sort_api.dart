@@ -29,6 +29,13 @@ class MailSortApi {
         asObject(await _http.patch('$prefix/config/mail-classes', body: {'personalSenders': senders})),
       );
 
+  /// Master's boxes, the whole list.
+  Future<MailSortConfig> setMailboxes(List<Mailbox> boxes) async => MailSortConfig.fromJson(asObject(
+        await _http.patch('$prefix/config/mail-classes', body: {
+          'mailboxes': [for (final b in boxes) b.toJson()],
+        }),
+      ));
+
   /// The rules that classify, and every rule's name (to say why a mail was kept out).
   Future<({List<SortRule> rules, Map<String, String> names})> rules() async {
     final data = asObject(await _http.get('$prefix/guard/rules'));

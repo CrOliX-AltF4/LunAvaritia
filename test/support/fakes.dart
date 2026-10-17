@@ -219,12 +219,18 @@ class FakeMailSortApi extends MailSortApi {
       c.name: {'visible': true, 'ai': c != MailClass.perso && c != MailClass.pub, 'rings': true},
   };
   List<String> senders = [];
+  List<Mailbox> boxes = [];
   List<Map<String, dynamic>> rawRules = [];
   List<Map<String, dynamic>> journal = [];
   final List<String> restored = [];
 
   MailSortConfig get _config =>
-      MailSortConfig.fromJson({'classes': classes, 'personalSenders': senders, 'counts': {'pub': 9}});
+      MailSortConfig.fromJson({
+        'classes': classes,
+        'personalSenders': senders,
+        'counts': {'pub': 9},
+        'mailboxes': [for (final b in boxes) b.toJson()],
+      });
 
   @override
   Future<MailSortConfig> config() async => _config;
@@ -232,6 +238,12 @@ class FakeMailSortApi extends MailSortApi {
   @override
   Future<MailSortConfig> setClass(MailClass c, String key, bool value) async {
     (classes[c.name] as Map<String, dynamic>)[key] = value;
+    return _config;
+  }
+
+  @override
+  Future<MailSortConfig> setMailboxes(List<Mailbox> b) async {
+    boxes = b;
     return _config;
   }
 

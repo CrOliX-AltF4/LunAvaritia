@@ -40,11 +40,22 @@ class ClassSettings {
   bool of(String key) => switch (key) { 'visible' => visible, 'ai' => ai, _ => rings };
 }
 
+/// One of Master's boxes forwarded to the main one, and the class its mail gets by default (null: as the mail says).
+class Mailbox {
+  const Mailbox({required this.address, this.mailClass});
+
+  final String address;
+  final MailClass? mailClass;
+
+  Map<String, dynamic> toJson() => {'address': address, 'mailClass': mailClass?.name};
+}
+
 class MailSortConfig {
-  MailSortConfig({required this.classes, required this.personalSenders, required this.counts});
+  MailSortConfig({required this.classes, required this.personalSenders, required this.counts, this.mailboxes = const []});
 
   final Map<MailClass, ClassSettings> classes;
   final List<String> personalSenders;
+  final List<Mailbox> mailboxes;
 
   /// Mails of the last 7 days, by class.
   final Map<MailClass, int> counts;
@@ -60,6 +71,11 @@ class MailSortConfig {
               : const ClassSettings(visible: true, ai: true, rings: true),
       },
       personalSenders: [for (final s in (json['personalSenders'] as List<dynamic>? ?? const [])) '$s'],
+      mailboxes: [
+        for (final b in (json['mailboxes'] as List<dynamic>? ?? const []))
+          if (b is Map<String, dynamic> && b['address'] is String)
+            Mailbox(address: b['address'] as String, mailClass: mailClassOf(b['mailClass'])),
+      ],
       counts: {for (final c in MailClass.values) c: (counts[c.name] as num?)?.toInt() ?? 0},
     );
   }

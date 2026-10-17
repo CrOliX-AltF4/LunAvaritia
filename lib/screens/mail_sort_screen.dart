@@ -26,6 +26,7 @@ class _MailSortScreenState extends State<MailSortScreen> {
   int _kept = 0;
   String? _error;
   final _sender = TextEditingController();
+  final _box = TextEditingController();
 
   @override
   void initState() {
@@ -36,6 +37,7 @@ class _MailSortScreenState extends State<MailSortScreen> {
   @override
   void dispose() {
     _sender.dispose();
+    _box.dispose();
     super.dispose();
   }
 
@@ -75,6 +77,19 @@ class _MailSortScreenState extends State<MailSortScreen> {
     if (s.isEmpty || _config == null) return;
     _sender.clear();
     unawaited(_save((api) => api.mailSort.setPersonalSenders([..._config!.personalSenders, s])));
+  }
+
+  void _addBox() {
+    final a = _box.text.trim().toLowerCase();
+    if (!a.contains('@') || _config == null) return;
+    _box.clear();
+    final rest = _config!.mailboxes.where((b) => b.address != a);
+    unawaited(_save((api) => api.mailSort.setMailboxes([...rest, Mailbox(address: a)])));
+  }
+
+  void _setBox(Mailbox box, MailClass? c) {
+    final list = [for (final b in _config!.mailboxes) b.address == box.address ? Mailbox(address: b.address, mailClass: c) : b];
+    unawaited(_save((api) => api.mailSort.setMailboxes(list)));
   }
 
   @override
@@ -146,6 +161,49 @@ class _MailSortScreenState extends State<MailSortScreen> {
                   ),
                   const SizedBox(width: 8),
                   OutlinedButton(onPressed: _addSender, child: const Text('Ajouter')),
+                ]),
+                const SizedBox(height: 22),
+                Text('Tes boîtes', style: da(family: serif, size: 20, weight: 600)),
+                const SizedBox(height: 4),
+                Text(
+                  'Les boîtes redirigées vers celle-ci : chaque mail dit sur laquelle il est arrivé ; leur classe par '
+                  "défaut s'applique à ce qui n'est ni perso, ni pub, ni notification.",
+                  style: da(size: 12.5, color: Palette.brume),
+                ),
+                for (final b in config.mailboxes)
+                  Row(
+                    key: ValueKey('mailbox-${b.address}'),
+                    children: [
+                      Expanded(child: Text(b.address, style: da(size: 14))),
+                      DropdownButton<MailClass?>(
+                        value: b.mailClass,
+                        onChanged: (c) => _setBox(b, c),
+                        items: [
+                          const DropdownMenuItem<MailClass?>(value: null, child: Text('Selon le mail')),
+                          for (final c in MailClass.values.where((c) => c != MailClass.inconnu))
+                            DropdownMenuItem<MailClass?>(value: c, child: Text(c.label)),
+                        ],
+                      ),
+                      IconButton(
+                        tooltip: 'Retirer ${b.address}',
+                        icon: const Icon(Icons.close, size: 18),
+                        onPressed: () => _save((api) => api.mailSort
+                            .setMailboxes(config.mailboxes.where((x) => x.address != b.address).toList())),
+                      ),
+                    ],
+                  ),
+                Row(children: [
+                  Expanded(
+                    child: TextField(
+                      key: const ValueKey('mailbox-new'),
+                      controller: _box,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(labelText: "Adresse d'une boîte", hintText: 'pro@exemple.fr'),
+                      onSubmitted: (_) => _addBox(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton(key: const ValueKey('mailbox-add'), onPressed: _addBox, child: const Text('Ajouter')),
                 ]),
                 const SizedBox(height: 22),
                 Text('Règles qui classent', style: da(family: serif, size: 20, weight: 600)),

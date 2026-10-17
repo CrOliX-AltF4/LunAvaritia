@@ -41,6 +41,10 @@ void main() {
     },
     'personalSenders': ['maman@famille.fr'],
     'counts': {'pub': 9},
+    'mailboxes': [
+      {'address': 'pro@espi.fr', 'mailClass': 'pro'},
+      {'address': 'autre@x.fr', 'mailClass': null},
+    ],
   };
 
   test('reads the classes and sets one switch; on the hub the same under /api/mobile', () async {
@@ -59,6 +63,16 @@ void main() {
     expect(config.classes[MailClass.pub]!.visible, isFalse);
     expect(config.counts[MailClass.pub], 9);
     expect(config.personalSenders, ['maman@famille.fr']);
+    expect(config.mailboxes.map((b) => (b.address, b.mailClass)), [('pro@espi.fr', MailClass.pro), ('autre@x.fr', null)]);
+
+    sent.clear();
+    await withServer((_) => classesJson, () => api.setMailboxes(config.mailboxes));
+    expect(jsonDecode(sent.single.body), {
+      'mailboxes': [
+        {'address': 'pro@espi.fr', 'mailClass': 'pro'},
+        {'address': 'autre@x.fr', 'mailClass': null},
+      ],
+    });
   });
 
   test('shows only the rules that classify, and says why a mail was kept out', () async {

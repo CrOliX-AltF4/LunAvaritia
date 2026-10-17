@@ -213,12 +213,13 @@ void main() {
           'priority': 'info',
           'ts': DateTime.now().millisecondsSinceEpoch,
           'ai': false,
-          'meta': {'from': 'Lumen <news@boutique-lumen.fr>', 'mailClass': 'pub'},
+          'meta': {'from': 'Lumen <news@boutique-lumen.fr>', 'mailClass': 'pub', 'mailbox': 'perso@free.fr'},
         }),
       ];
       await box.load();
       await pump(tester, const BoxReaderScreen(itemKey: 'email-1'));
       expect(find.text('Pub · hors IA'), findsOneWidget);
+      expect(find.text('Reçu sur perso@free.fr'), findsOneWidget);
       expect(find.byKey(const ValueKey('reader-no-ai')), findsOneWidget);
       expect(find.text('Traiter'), findsNothing);
 

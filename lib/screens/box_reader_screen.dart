@@ -161,6 +161,11 @@ class _BoxReaderScreenState extends State<BoxReaderScreen> {
               Text(boxTime(item.ts), style: da(size: 13, color: Palette.lune)),
             ],
           ),
+          if (item.mailbox != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('Reçu sur ${item.mailbox}', style: da(size: 12.5, color: Palette.brume)),
+            ),
           if (item.priorityReason != null && item.priority != BoxPriority.urgent)
             Padding(
               padding: const EdgeInsets.only(top: 6),

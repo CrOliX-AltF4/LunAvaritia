@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
+import 'package:lunavaritia/models/mail_sort.dart';
 import 'package:lunavaritia/providers/box_controller.dart';
 import 'package:lunavaritia/providers/shell_controller.dart';
 import 'package:lunavaritia/screens/mail_sort_screen.dart';
@@ -57,12 +58,26 @@ void main() {
     expect(tester.widget<Checkbox>(find.byKey(const ValueKey('class-perso-ai'))).value, isTrue);
 
     final list = find.descendant(of: find.byType(ListView), matching: find.byType(Scrollable)).first;
-    await tester.scrollUntilVisible(find.byType(TextField), 200, scrollable: list);
-    await tester.enterText(find.byType(TextField), 'maman@famille.fr');
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Ajouter'));
+    final senderField = find.widgetWithText(TextField, 'Nouvel expéditeur perso');
+    await tester.scrollUntilVisible(senderField, 200, scrollable: list);
+    await tester.enterText(senderField, 'maman@famille.fr');
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Ajouter').first);
     await tester.pumpAndSettle();
     expect(backend.mailSort.senders, ['maman@famille.fr']);
     expect(find.widgetWithText(InputChip, 'maman@famille.fr'), findsOneWidget);
+
+    // A forwarded box: added, then given a class by default.
+    await tester.scrollUntilVisible(find.byKey(const ValueKey('mailbox-new')), 200, scrollable: list);
+    await tester.enterText(find.byKey(const ValueKey('mailbox-new')), 'Pro@ESPI.fr');
+    await tester.tap(find.byKey(const ValueKey('mailbox-add')));
+    await tester.pumpAndSettle();
+    expect(backend.mailSort.boxes.single.address, 'pro@espi.fr');
+    await tester.scrollUntilVisible(find.byKey(const ValueKey('mailbox-pro@espi.fr')), 200, scrollable: list);
+    await tester.tap(find.text('Selon le mail'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Pro').last);
+    await tester.pumpAndSettle();
+    expect(backend.mailSort.boxes.single.mailClass, MailClass.pro);
 
     await tester.scrollUntilVisible(find.text('De « espi.fr » → Pro'), 200, scrollable: list);
     await tester.tap(find.byKey(const ValueKey('sort-rule-r1')));

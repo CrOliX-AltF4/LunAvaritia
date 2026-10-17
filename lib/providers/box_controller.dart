@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../models/alert.dart';
 import '../models/box_item.dart';
 import '../models/digest.dart';
+import '../models/mail_sort.dart';
 import '../services/backend_client.dart';
 import '../services/notification_tray.dart';
 
@@ -113,6 +114,20 @@ class BoxController extends ChangeNotifier {
         await _api.inbox.solve(item.key, n);
       }
       _adopt(item.key, BoxChange.removed);
+      return null;
+    } on BackendError catch (e) {
+      return e.message;
+    } catch (e) {
+      return 'Erreur inattendue : $e';
+    }
+  }
+
+  /// « Classer… »: null when done (the box is read again — the class decides what a model may read), otherwise why not.
+  Future<String?> classify(BoxItem item, MailClass c, {required bool always}) async {
+    try {
+      final r = await _api.inbox.classify(item.key, c, always: always);
+      _adopt(item.key, r.change);
+      await load();
       return null;
     } on BackendError catch (e) {
       return e.message;

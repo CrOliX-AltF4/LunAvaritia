@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/api_config.dart';
 import '../models/assistant_identity.dart';
+import '../providers/shell_controller.dart';
 import '../services/app_version.dart';
 import '../services/backend_client.dart';
 import '../services/connection_controller.dart';
@@ -333,7 +334,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ],
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
+          // ── Sorting mail (LunAcedia's) ─────────────────────────────────────
+          ListTile(
+            key: const ValueKey('settings-mail-sort'),
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.filter_alt_outlined),
+            title: const Text('Tri des mails'),
+            subtitle: Text("Ce que l'IA lit, ce qui sonne, tes expéditeurs perso", style: small),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.read<ShellController>().go(const MailSortDestination()),
+          ),
+          const SizedBox(height: 8),
           // ── Info ─────────────────────────────────────────────────────────────
           const Divider(),
           const SizedBox(height: 8),

@@ -9,6 +9,8 @@ import 'package:lunavaritia/services/connection_controller.dart';
 import 'package:lunavaritia/services/http_transport.dart';
 import 'package:lunavaritia/services/inbox_api.dart';
 import 'package:lunavaritia/services/planning_api.dart';
+import 'package:lunavaritia/services/mail_sort_api.dart';
+import 'package:lunavaritia/models/mail_sort.dart';
 import 'package:lunavaritia/models/planning.dart';
 import 'package:lunavaritia/services/notification_tray.dart';
 import 'package:lunavaritia/services/validation_api.dart';
@@ -180,6 +182,16 @@ class FakeInboxApi extends InboxApi {
     trashed.removeWhere((t) => t.id == messageId);
   }
 
+  /// « Classer… »: recorded as (key, class, always).
+  final List<(String, MailClass, bool)> classified = [];
+
+  @override
+  Future<GestureResult> classify(String key, MailClass c, {bool always = false}) async {
+    classified.add((key, c, always));
+    if (gestureError != null) throw gestureError!;
+    return GestureResult();
+  }
+
   /// A conflict's gestures: « solve-<n> » or « leave »; either takes it out of the box.
   final List<(String, String)> settled = [];
 
@@ -195,6 +207,61 @@ class FakeInboxApi extends InboxApi {
     settled.add((key, 'leave'));
     if (gestureError != null) throw gestureError!;
     items.removeWhere((i) => i.key == key);
+  }
+}
+
+/// LunAcedia's sorting of mail in memory: switches and rules recorded, the journal restorable.
+class FakeMailSortApi extends MailSortApi {
+  FakeMailSortApi() : super(HttpTransport(ApiConfig.forTest(baseUrl: 'http://fake')), prefix: '/m');
+
+  Map<String, dynamic> classes = {
+    for (final c in MailClass.values)
+      c.name: {'visible': true, 'ai': c != MailClass.perso && c != MailClass.pub, 'rings': true},
+  };
+  List<String> senders = [];
+  List<Map<String, dynamic>> rawRules = [];
+  List<Map<String, dynamic>> journal = [];
+  final List<String> restored = [];
+
+  MailSortConfig get _config =>
+      MailSortConfig.fromJson({'classes': classes, 'personalSenders': senders, 'counts': {'pub': 9}});
+
+  @override
+  Future<MailSortConfig> config() async => _config;
+
+  @override
+  Future<MailSortConfig> setClass(MailClass c, String key, bool value) async {
+    (classes[c.name] as Map<String, dynamic>)[key] = value;
+    return _config;
+  }
+
+  @override
+  Future<MailSortConfig> setPersonalSenders(List<String> s) async {
+    senders = s;
+    return _config;
+  }
+
+  @override
+  Future<({List<SortRule> rules, Map<String, String> names})> rules() async => (
+        rules: [for (final r in rawRules) if (SortRule.fromJson(r) case final s?) s],
+        names: {for (final r in rawRules) '${r['id']}': '${r['name']}'},
+      );
+
+  @override
+  Future<void> setRule(String id, bool enabled) async {
+    for (final r in rawRules) {
+      if (r['id'] == id) r['enabled'] = enabled;
+    }
+  }
+
+  @override
+  Future<({List<KeptOut> items, int total})> keptOut(Map<String, String> ruleNames) async =>
+      (items: [for (final e in journal) KeptOut.fromJson(e, ruleNames)], total: journal.length);
+
+  @override
+  Future<void> restore(String key) async {
+    restored.add(key);
+    journal.removeWhere((e) => (e['event'] as Map)['dedupeKey'] == key);
   }
 }
 
@@ -293,6 +360,9 @@ class FakeBackend extends BackendClient {
 
   @override
   final FakePlanningApi planning = FakePlanningApi();
+
+  @override
+  final FakeMailSortApi mailSort = FakeMailSortApi();
 
   @override
   final FakeValidationApi validation = FakeValidationApi();

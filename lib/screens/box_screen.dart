@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../models/alert.dart';
 import '../models/box_item.dart';
+import '../models/mail_sort.dart';
 import '../providers/box_controller.dart';
 import '../providers/shell_controller.dart';
 import '../theme/app_theme.dart';
@@ -247,6 +248,82 @@ class _BoxRow extends StatelessWidget {
 }
 
 /// The long press (DA-M4): read, deal with it, then the source's gestures — the trash apart, outlined in red.
+/// « Classer comme… »: this mail, or every mail of its sender (a rule is made, shown in Tri des mails).
+Future<void> showClassifySheet(BuildContext context, BoxItem item) {
+  final box = context.read<BoxController>();
+  final messenger = ScaffoldMessenger.of(context);
+  final domain = senderDomainOf(item.from ?? '');
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Palette.encre2,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+    builder: (sheet) {
+      var chosen = item.mailClass == MailClass.inconnu ? null : item.mailClass;
+      var always = true;
+      return StatefulBuilder(
+        builder: (context, setSheet) => SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Classer comme…', style: da(family: serif, size: 20, weight: 600)),
+                RadioGroup<MailClass>(
+                  groupValue: chosen,
+                  onChanged: (v) => setSheet(() => chosen = v),
+                  child: Column(children: [
+                    for (final c in MailClass.values.where((c) => c != MailClass.inconnu))
+                      RadioListTile<MailClass>(
+                        key: ValueKey('classify-${c.name}'),
+                        contentPadding: EdgeInsets.zero,
+                        value: c,
+                        title: Text(item.mailClass == c ? '${c.label} (actuelle)' : c.label),
+                      ),
+                  ]),
+                ),
+                if (domain.isNotEmpty)
+                  CheckboxListTile(
+                    key: const ValueKey('classify-always'),
+                    contentPadding: EdgeInsets.zero,
+                    value: always,
+                    onChanged: (v) => setSheet(() => always = v ?? false),
+                    title: Text('Toujours pour « $domain »'),
+                    subtitle: Text('Crée une règle, visible dans Tri des mails.', style: da(size: 12, color: Palette.brume)),
+                  ),
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(child: OutlinedButton(onPressed: () => Navigator.of(sheet).pop(), child: const Text('Annuler'))),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: chosen == null
+                          ? null
+                          : () async {
+                              Navigator.of(sheet).pop();
+                              final why = await box.classify(item, chosen!, always: always && domain.isNotEmpty);
+                              if (why != null) messenger.showSnackBar(SnackBar(content: Text('Pas classé : $why')));
+                            },
+                      child: const Text('Classer'),
+                    ),
+                  ),
+                ]),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+/// « boutique-lumen.fr » out of « Lumen <news@boutique-lumen.fr> » — what « always for this sender » names.
+String senderDomainOf(String from) {
+  final m = RegExp(r'[^<\s]+@([^>\s]+)').firstMatch(from);
+  return m?.group(1)?.toLowerCase() ?? '';
+}
+
 Future<void> showBoxActions(BuildContext context, BoxItem item) {
   final shell = context.read<ShellController>();
   return showModalBottomSheet<void>(
@@ -295,14 +372,29 @@ Future<void> showBoxActions(BuildContext context, BoxItem item) {
                   shell.go(BoxItemDestination(item.key));
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.chat_bubble_outline),
-                title: const Text('Traiter'),
-                onTap: () {
-                  close();
-                  shell.go(HomeDestination(aboutKey: item.key, aboutTitle: item.title));
-                },
-              ),
+              // Kept away from the AI by its class: nothing to hand an assistant.
+              if (item.aiReadable)
+                ListTile(
+                  leading: const Icon(Icons.chat_bubble_outline),
+                  title: const Text('Traiter'),
+                  onTap: () {
+                    close();
+                    shell.go(HomeDestination(aboutKey: item.key, aboutTitle: item.title));
+                  },
+                ),
+              if (item.source == BoxSource.email)
+                ListTile(
+                  key: const ValueKey('box-action-classify'),
+                  leading: const Icon(Icons.filter_alt_outlined),
+                  title: const Text('Classer…'),
+                  trailing: item.mailClass == null
+                      ? null
+                      : Text(item.mailClass!.label, style: da(size: 12, color: Palette.lune)),
+                  onTap: () {
+                    close();
+                    unawaited(showClassifySheet(context, item));
+                  },
+                ),
               for (final g in source)
                 ListTile(
                   key: ValueKey('box-action-${g.name}'),

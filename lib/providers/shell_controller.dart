@@ -30,6 +30,16 @@ class BoxItemDestination extends Destination {
   final Destination back;
 }
 
+/// Sorting mail: the classes, the personal senders, the rules that classify.
+class MailSortDestination extends Destination {
+  const MailSortDestination();
+}
+
+/// What was kept out of the box, restorable — from the sorting of mail.
+class KeptOutDestination extends Destination {
+  const KeptOutDestination();
+}
+
 /// The planning (lot AT7): today, the week, the tasks, what is late.
 class PlanningDestination extends Destination {
   const PlanningDestination();

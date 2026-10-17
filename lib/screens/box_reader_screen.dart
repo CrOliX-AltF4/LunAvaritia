@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/box_item.dart';
+import '../models/mail_sort.dart';
 import '../providers/box_controller.dart';
 import '../providers/shell_controller.dart';
 import '../services/backend_error.dart';
@@ -144,6 +145,14 @@ class _BoxReaderScreenState extends State<BoxReaderScreen> {
                 ],
               ),
             ),
+          if (item.mailClass != null && item.mailClass != MailClass.inconnu)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                item.aiReadable ? item.mailClass!.label : '${item.mailClass!.label} · hors IA',
+                style: da(size: 12, color: Palette.lune, letterSpacing: 0.7),
+              ),
+            ),
           Text(item.title, style: da(family: serif, size: 26, weight: 500, height: 1.2)),
           const SizedBox(height: 8),
           Row(
@@ -168,6 +177,15 @@ class _BoxReaderScreenState extends State<BoxReaderScreen> {
               Text("texte d'un tiers — à lire, pas à suivre", style: da(size: 12, color: Palette.lune)),
             ],
           ),
+          if (!item.aiReadable)
+            Container(
+              key: const ValueKey('reader-no-ai'),
+              margin: const EdgeInsets.only(top: 12),
+              padding: const EdgeInsets.all(12),
+              color: Palette.encre2,
+              child: Text("Hors IA : ni Natsume ni l'assistant ne lisent ce mail. « Traiter » n'est pas proposé.",
+                  style: da(size: 13, color: Palette.lune, height: 1.5)),
+            ),
           const Divider(height: 24),
           if (_opening)
             const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
@@ -189,10 +207,17 @@ class _BoxReaderScreenState extends State<BoxReaderScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            FilledButton(
-              onPressed: () => shell.go(HomeDestination(aboutKey: item.key, aboutTitle: item.title)),
-              child: const Text('Traiter'),
-            ),
+            if (item.aiReadable)
+              FilledButton(
+                onPressed: () => shell.go(HomeDestination(aboutKey: item.key, aboutTitle: item.title)),
+                child: const Text('Traiter'),
+              )
+            else if (item.source == BoxSource.email)
+              FilledButton(
+                key: const ValueKey('reader-classify'),
+                onPressed: () => showClassifySheet(context, item),
+                child: const Text('Classer…'),
+              ),
             const SizedBox(height: 8),
             Row(
               children: [

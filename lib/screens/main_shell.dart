@@ -21,6 +21,7 @@ import 'box_reader_screen.dart';
 import 'box_screen.dart';
 import 'digest_sheet.dart';
 import 'home_screen.dart';
+import 'mail_sort_screen.dart';
 import 'planning_screen.dart';
 import 'settings_screen.dart';
 import 'topic_screen.dart';
@@ -229,6 +230,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         BoxItemDestination(:final key, :final back) =>
           BoxReaderScreen(key: ValueKey('box-item-$key'), itemKey: key, back: back),
         PlanningDestination() => const PlanningScreen(),
+        MailSortDestination() => const MailSortScreen(),
+        KeptOutDestination() => const KeptOutScreen(),
         TrashDestination() => const TrashScreen(),
         ValidateDestination() => const ValidateScreen(),
         ArchivedDestination() => const ArchivedScreen(),
@@ -249,6 +252,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         shell.go(switch (destination) {
           BoxItemDestination(:final back) => back,
           TrashDestination() => const BoxDestination(),
+          MailSortDestination() => const SettingsDestination(),
+          KeptOutDestination() => const MailSortDestination(),
           _ => const HomeDestination(),
         });
       },

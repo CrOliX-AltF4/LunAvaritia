@@ -110,7 +110,9 @@ void main() {
   group('SettingsScreen — updates', () {
     Future<void> checkWith(WidgetTester tester, UpdateStatus status) async {
       await pumpSettings(tester, (_) async => AssistantIdentity.unknown, checkUpdate: () async => status);
-      await tester.ensureVisible(find.text('Rechercher une mise à jour'));
+      // A lazy list builds what is near the screen only: scroll to it rather than assume it is built.
+      await tester.scrollUntilVisible(find.text('Rechercher une mise à jour'), 200,
+          scrollable: find.descendant(of: find.byType(ListView), matching: find.byType(Scrollable)).first);
       await tester.tap(find.text('Rechercher une mise à jour'));
       await tester.pumpAndSettle();
     }

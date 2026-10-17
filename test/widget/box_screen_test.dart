@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:lunavaritia/models/alert.dart';
 import 'package:lunavaritia/models/box_item.dart';
+import 'package:lunavaritia/models/mail_sort.dart';
 import 'package:lunavaritia/providers/box_controller.dart';
 import 'package:lunavaritia/providers/shell_controller.dart';
 import 'package:lunavaritia/screens/box_reader_screen.dart';
@@ -201,6 +202,36 @@ void main() {
   });
 
   group('BoxReaderScreen', () {
+    // A mail no model may read: said, no « Traiter », and « Classer… » files it — for its sender too by default.
+    testWidgets('a mail kept away from the AI says so, offers no « Traiter », and is filed with « Classer… »', (tester) async {
+      backend.inbox.items = [
+        BoxItem.fromJson({
+          'dedupeKey': 'email-1',
+          'type': 'email.received',
+          'source': 'email',
+          'title': 'Soldes',
+          'priority': 'info',
+          'ts': DateTime.now().millisecondsSinceEpoch,
+          'ai': false,
+          'meta': {'from': 'Lumen <news@boutique-lumen.fr>', 'mailClass': 'pub'},
+        }),
+      ];
+      await box.load();
+      await pump(tester, const BoxReaderScreen(itemKey: 'email-1'));
+      expect(find.text('Pub · hors IA'), findsOneWidget);
+      expect(find.byKey(const ValueKey('reader-no-ai')), findsOneWidget);
+      expect(find.text('Traiter'), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('reader-classify')));
+      await tester.pumpAndSettle();
+      expect(find.text('Toujours pour « boutique-lumen.fr »'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('classify-notification')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Classer'));
+      await tester.pumpAndSettle();
+      expect(backend.inbox.classified, [('email-1', MailClass.notification, true)]);
+    });
+
     BoxItem conflict() => BoxItem.fromJson({
           'dedupeKey': 'c1',
           'type': 'planning.conflict',

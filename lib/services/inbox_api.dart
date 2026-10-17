@@ -1,4 +1,5 @@
 import '../models/box_item.dart';
+import '../models/mail_sort.dart';
 import 'http_transport.dart';
 
 /// The box contract — the same paths and shapes on LunAcedia (standalone) and on the hub
@@ -34,6 +35,11 @@ class InboxApi {
   Future<void> solve(String key, int n) async {
     await _http.post('$path/${Uri.encodeComponent(key)}/solve-$n');
   }
+
+  /// « Classer… »: this mail in another class, or with [always] every mail of its sender (a rule is made).
+  Future<GestureResult> classify(String key, MailClass c, {bool always = false}) async => GestureResult.fromJson(
+        asObject(await _http.post('$path/${Uri.encodeComponent(key)}/class-${c.name}', body: {'always': always})),
+      );
 
   /// A conflict left as it is: out of the box, not brought back while it lasts.
   Future<void> leave(String key) async {

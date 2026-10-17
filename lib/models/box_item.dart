@@ -1,3 +1,5 @@
+import 'mail_sort.dart';
+
 /// One item of the box as LunAcedia holds it — what is in the inbox at the source (Gmail, GitHub…).
 enum BoxSource { email, calendar, tasks, github, rss, ha, system }
 
@@ -24,6 +26,8 @@ class BoxItem {
     this.from,
     this.priorityReason,
     this.conflict,
+    this.mailClass,
+    this.aiReadable = true,
   });
 
   /// LunAcedia's key for the item (its dedupeKey) — what a gesture, a topic or a notification points at.
@@ -45,6 +49,12 @@ class BoxItem {
 
   /// A planning conflict's ways out — computed by LunAcedia, chosen here by Master.
   final ConflictWays? conflict;
+
+  /// A mail's class, given by LunAcedia at arrival without any AI.
+  final MailClass? mailClass;
+
+  /// False when no model may read it (its class): « Traiter » is not offered, the reader says why.
+  final bool aiReadable;
 
   /// The gestures this source can do. LunAcedia refuses the others; the app does not offer them. A GitHub
   /// notification is marked read (it stays) or done (it leaves), as at GitHub.
@@ -77,12 +87,15 @@ class BoxItem {
       from: meta['from'] as String?,
       priorityReason: json['priorityReason'] as String?,
       conflict: json['type'] == 'planning.conflict' ? ConflictWays.fromMeta(meta) : null,
+      mailClass: mailClassOf(meta['mailClass']),
+      aiReadable: json['ai'] != false,
     );
   }
 
   BoxItem copyWith({bool? read}) => BoxItem(
         key: key, type: type, source: source, title: title, priority: priority, ts: ts,
         read: read ?? this.read, body: body, url: url, from: from, priorityReason: priorityReason, conflict: conflict,
+        mailClass: mailClass, aiReadable: aiReadable,
       );
 }
 

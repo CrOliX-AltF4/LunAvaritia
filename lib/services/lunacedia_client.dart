@@ -5,6 +5,7 @@ import '../models/digest.dart';
 import 'backend_client.dart';
 import 'http_transport.dart';
 import 'inbox_api.dart';
+import 'mail_sort_api.dart';
 import 'planning_api.dart';
 import 'validation_api.dart';
 import 'topic_api.dart';
@@ -17,6 +18,7 @@ class LunAcediaClient extends BackendClient {
       : topics = TopicApi.lunacedia(_http),
         inbox = InboxApi.lunacedia(_http),
         planning = PlanningApi.lunacedia(_http),
+        mailSort = MailSortApi.lunacedia(_http),
         validation = ValidationApi.lunacedia(_http);
 
   final HttpTransport _http;
@@ -29,6 +31,9 @@ class LunAcediaClient extends BackendClient {
 
   @override
   final PlanningApi planning;
+
+  @override
+  final MailSortApi mailSort;
 
   @override
   final ValidationApi validation;

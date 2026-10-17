@@ -4,6 +4,7 @@ import '../models/assistant_identity.dart';
 import '../models/digest.dart';
 import 'api_service.dart';
 import 'inbox_api.dart';
+import 'mail_sort_api.dart';
 import 'planning_api.dart';
 import 'validation_api.dart';
 import 'lunacedia_client.dart';
@@ -20,6 +21,9 @@ abstract class BackendClient {
 
   /// The planning — LunAcedia's, « Fait » on a task at the source.
   PlanningApi get planning;
+
+  /// The sorting of mail — LunAcedia's classes, the rules that classify, what was kept out of the box.
+  MailSortApi get mailSort;
 
   /// « À valider »: pending writes, and the hub's memory proposals.
   ValidationApi get validation;

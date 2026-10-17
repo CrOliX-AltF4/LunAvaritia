@@ -85,6 +85,12 @@ class AppDrawer extends StatelessWidget {
               onTap: () => shell.go(const BoxDestination()),
             ),
             _NavRow(
+              icon: Icons.event_note_outlined,
+              label: 'Planning',
+              selected: shell.current is PlanningDestination,
+              onTap: () => shell.go(const PlanningDestination()),
+            ),
+            _NavRow(
               icon: Icons.fact_check_outlined,
               label: 'À valider',
               selected: shell.current is ValidateDestination,

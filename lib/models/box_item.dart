@@ -23,6 +23,7 @@ class BoxItem {
     this.url,
     this.from,
     this.priorityReason,
+    this.conflict,
   });
 
   /// LunAcedia's key for the item (its dedupeKey) — what a gesture, a topic or a notification points at.
@@ -41,6 +42,9 @@ class BoxItem {
 
   /// Why it has its priority, in LunAcedia's words (« VIP », « Gmail : important ») — absent from an older server.
   final String? priorityReason;
+
+  /// A planning conflict's ways out — computed by LunAcedia, chosen here by Master.
+  final ConflictWays? conflict;
 
   /// The gestures this source can do. LunAcedia refuses the others; the app does not offer them. A GitHub
   /// notification is marked read (it stays) or done (it leaves), as at GitHub.
@@ -72,12 +76,36 @@ class BoxItem {
       url: json['url'] as String?,
       from: meta['from'] as String?,
       priorityReason: json['priorityReason'] as String?,
+      conflict: json['type'] == 'planning.conflict' ? ConflictWays.fromMeta(meta) : null,
     );
   }
 
   BoxItem copyWith({bool? read}) => BoxItem(
         key: key, type: type, source: source, title: title, priority: priority, ts: ts,
-        read: read ?? this.read, body: body, url: url, from: from, priorityReason: priorityReason,
+        read: read ?? this.read, body: body, url: url, from: from, priorityReason: priorityReason, conflict: conflict,
+      );
+}
+
+/// What a conflict could become: the event that would move, and the free slots of its day, of its length.
+class ConflictWays {
+  ConflictWays({required this.moving, required this.slots});
+
+  /// The moving event's title (empty from an older server).
+  final String moving;
+
+  /// In LunAcedia's order — the n-th is chosen by its index.
+  final List<({DateTime start, DateTime end})> slots;
+
+  factory ConflictWays.fromMeta(Map<String, dynamic> meta) => ConflictWays(
+        moving: meta['movingTitle'] as String? ?? '',
+        slots: [
+          for (final s in (meta['solutions'] as List<dynamic>? ?? const []))
+            if (s is Map<String, dynamic>)
+              (
+                start: DateTime.tryParse(s['start'] as String? ?? '')?.toLocal() ?? DateTime.fromMillisecondsSinceEpoch(0),
+                end: DateTime.tryParse(s['end'] as String? ?? '')?.toLocal() ?? DateTime.fromMillisecondsSinceEpoch(0),
+              ),
+        ],
       );
 }
 

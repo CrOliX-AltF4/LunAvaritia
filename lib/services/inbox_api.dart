@@ -30,6 +30,16 @@ class InboxApi {
         asObject(await _http.post('$path/${Uri.encodeComponent(key)}/${gesture.name}')),
       );
 
+  /// A conflict's [n]-th way out: its event moved there at Google Agenda, and the conflict leaves the box.
+  Future<void> solve(String key, int n) async {
+    await _http.post('$path/${Uri.encodeComponent(key)}/solve-$n');
+  }
+
+  /// A conflict left as it is: out of the box, not brought back while it lasts.
+  Future<void> leave(String key) async {
+    await _http.post('$path/${Uri.encodeComponent(key)}/leave');
+  }
+
   /// One page of Gmail's trash, most recent first; [page] is the `next` of the previous one.
   Future<TrashPage> trash({String? page}) async => TrashPage.fromJson(
         asObject(await _http.get(page == null ? '$path/trash' : '$path/trash?page=${Uri.encodeQueryComponent(page)}')),

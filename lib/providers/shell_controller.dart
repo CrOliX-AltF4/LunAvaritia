@@ -21,10 +21,18 @@ class BoxDestination extends Destination {
   const BoxDestination();
 }
 
-/// One item of the box, read in full (DA-M4) — from the box or from a tapped notification.
+/// One item of the box, read in full (DA-M4) — from the box, a tapped notification or the planning (a conflict).
 class BoxItemDestination extends Destination {
-  const BoxItemDestination(this.key);
+  const BoxItemDestination(this.key, {this.back = const BoxDestination()});
   final String key;
+
+  /// Where « Retour » leads — the box, or the screen it was opened from.
+  final Destination back;
+}
+
+/// The planning (lot AT7): today, the week, the tasks, what is late.
+class PlanningDestination extends Destination {
+  const PlanningDestination();
 }
 
 /// Gmail's trash, from the box.

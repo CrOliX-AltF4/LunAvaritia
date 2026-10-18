@@ -28,6 +28,7 @@ class BoxItem {
     this.conflict,
     this.mailClass,
     this.aiReadable = true,
+    this.mailbox,
   });
 
   /// LunAcedia's key for the item (its dedupeKey) — what a gesture, a topic or a notification points at.
@@ -55,6 +56,9 @@ class BoxItem {
 
   /// False when no model may read it (its class): « Traiter » is not offered, the reader says why.
   final bool aiReadable;
+
+  /// Which of Master's boxes it came to (forwarded to the main one) — absent when none of them.
+  final String? mailbox;
 
   /// The gestures this source can do. LunAcedia refuses the others; the app does not offer them. A GitHub
   /// notification is marked read (it stays) or done (it leaves), as at GitHub.
@@ -89,13 +93,14 @@ class BoxItem {
       conflict: json['type'] == 'planning.conflict' ? ConflictWays.fromMeta(meta) : null,
       mailClass: mailClassOf(meta['mailClass']),
       aiReadable: json['ai'] != false,
+      mailbox: meta['mailbox'] as String?,
     );
   }
 
   BoxItem copyWith({bool? read}) => BoxItem(
         key: key, type: type, source: source, title: title, priority: priority, ts: ts,
         read: read ?? this.read, body: body, url: url, from: from, priorityReason: priorityReason, conflict: conflict,
-        mailClass: mailClass, aiReadable: aiReadable,
+        mailClass: mailClass, aiReadable: aiReadable, mailbox: mailbox,
       );
 }
 
